@@ -240,6 +240,16 @@ MCP Server 需要 Node.js 才能執行。先檢查您是否已安裝：
 3. 在「MCP Tools」面板點擊「**MCP 服務 (開/關)**」按鈕
 4. 確認看到「WebSocket 伺服器已啟動，監聽: localhost:8765」
 
+> 💡 **關於埠號 (Port) 的說明**：
+> - `8765` 是 MCP Server 預設的通訊埠號
+> - 埠號是一個任意號碼，有可能被其他程式佔用
+> - 如果您看到「埠號 8765 已被佔用」的錯誤訊息，需要手動調整：
+>   1. 開啟本專案的設定檔 `MCP-Server/src/index.ts`
+>   2. 找到 `PORT = 8765` 的這一行
+>   3. 改成其他未被使用的埠號，例如 `8766` 或 `9000`
+>   4. 重新編譯：`npm run build`
+>   5. 所有使用此 MCP Server 的 AI 應用程式也要更新埠號設定（改為同樣的新埠號）
+
 ### 2️⃣ 透過 AI 平台連線
 
 依您選擇的 AI 平台，參考下方的設定說明。
@@ -385,7 +395,7 @@ MCP Server **不直接**與任何 AI API 通訊，它只是一個「翻譯官」
 | 想在 Revit 內對話 | 內嵌 Chat（Gemini API）| 最流暢的使用體驗 |
 | 偏好 Google | Gemini CLI | 用自己的 Google 帳戶 |
 | 程式開發者 | VS Code Copilot | 在開發環境中無縫使用 |
-| 雲端開發 | Antigravity | 整合 Google Cloud 工作流 |
+| 進階 AI 開發 | Antigravity | 多視窗與 Agent 同步執行 |
 
 ---
 
@@ -547,45 +557,88 @@ Anthropic 官方桌面應用程式，這是**最簡單的方式**。
 
 ---
 
-### 方案 4️⃣：Google Antigravity (Project IDX)
+### 方案 4️⃣：Google Antigravity
 
-Google 的雲端 AI 開發環境（進階選項）。
+[Google Antigravity](https://antigravity.google/) 是 Google 推出的「以代理程式為主」的開發平台，將 IDE 帶入 AI Agent 時代。
 
-#### 步驟 1：建立 Google Cloud 專案
+**主要特色：**
+- 以開放原始碼的 VS Code 為基礎，但大幅改變使用者體驗
+- 介面分成兩個主要視窗：**Editor**（編輯器）和 **Agent Manager**（代理程式管理員）
+- 可同時派遣**多個代理程式**處理不同工作（非線性、非同步執行）
+- 內建 **Antigravity Browser**（瀏覽器子代理程式）可執行網頁測試與錄影
+- 代理程式會產生「構件」（Artifacts）如工作計畫、程式碼差異、螢幕截圖等
+- 目前僅適用於**個人 Gmail 帳戶**的預先發布版（免費使用）
 
-1. 前往 https://console.cloud.google.com
-2. 點擊「Create Project」
-3. 填入專案名稱，點擊「Create」
+#### 步驟 1：安裝 Google Antigravity
 
-#### 步驟 2.5：設定 Antigravity MCP
+1. **前往下載頁面**
+   - 開啟瀏覽器，前往 https://antigravity.google/download
+   - 點選適用於您作業系統的版本（Windows / Mac / Linux）
+   - 執行安裝程式，完成安裝
 
-1. **在 Project IDX 中建立 `.idx/mcp.json`**
-   ```json
-   {
-     "mcpServers": {
-       "revit-mcp": {
-         "command": "node",
-         "args": ["C:\\path\\to\\MCP-Server\\build\\index.js"],
-         "env": {
-           "REVIT_VERSION": "2022"
-         }
-       }
-     }
-   }
-   ```
+2. **啟動 Antigravity 並完成設定**
+   - 開啟 Antigravity 應用程式
+   - 選擇設定流程（可從現有 VS Code 或 Cursor 設定匯入，或重新開始）
+   - 選擇編輯器主題（深色/淺色）
+   - 選擇代理程式使用模式：
+     - **代理程式導向開發**：Agent 自主執行，較少人為介入
+     - **代理程式輔助開發**（推薦）：Agent 做出決策後返回給使用者核准
+     - **以審查為導向的開發**：Agent 一律要求審查
+     - **自訂設定**：完全自訂控制
 
-2. **或使用 Antigravity 的圖形介面**
-   - Settings → MCP Servers
-   - Add Server
-   - 填入 MCP Server 路徑
+3. **使用 Google 帳戶登入**
+   - 點選「Sign in to Google」
+   - 使用個人 Gmail 帳戶登入
+   - 系統會為此建立新的 Chrome 設定檔
 
-#### 步驟 3：啟動
+#### 步驟 2：設定瀏覽器代理程式（Antigravity Browser）
 
-1. 確認 Revit MCP 服務已啟動
-2. 在 Antigravity 環境中開啟 AI Chat
-3. 與 Gemini 對話控制 Revit
+Antigravity 的一大特色是內建瀏覽器子代理程式，可讓 AI 直接操作網頁。
 
-⚠️ **注意**：因為 Antigravity 運行在雲端，MCP Server 需要在有網路存取的機器上運行。
+1. **在 Agent Manager 中開始對話**
+   - 選取 `Playground` 或任意工作區
+   - 輸入需要瀏覽器的指令（例如：「前往 antigravity.google」）
+
+2. **安裝 Chrome 擴充功能**
+   - Agent 會提示需要設定瀏覽器代理程式
+   - 點選 `Setup`，按照指示安裝 Chrome 擴充功能
+   - 安裝完成後，Agent 即可控制瀏覽器執行工作
+
+#### 步驟 3：設定 MCP Server 連接 Revit
+
+> ⚠️ **注意**：Antigravity 執行在本機，MCP Server 也需要在同一台 Windows 電腦上運行（因為需要連接 Revit）。
+
+1. **開啟工作區**
+   - 在 Agent Manager 中點選 `Workspaces`
+   - 選擇本專案的 `MCP-Server` 資料夾作為工作區
+
+2. **透過對話啟動 MCP 連接**
+   - 在 Agent Manager 中開始新對話
+   - 告訴 Agent：「請執行 node build/index.js 啟動 MCP Server」
+   - 或直接在編輯器的終端機中執行：
+     ```
+     cd C:\Users\您的使用者名稱\Desktop\REVIT MCP\MCP-Server
+     node build/index.js
+     ```
+
+3. **開始與 Revit 互動**
+   - 確認 Revit 已啟動且 MCP 服務已開啟
+   - 在 Agent Manager 中輸入指令，例如：
+     ```
+     請幫我在 Revit 中建立一面 5 米長的牆
+     ```
+
+#### 🎯 Antigravity 的獨特優勢
+
+| 功能 | 說明 |
+|------|------|
+| **多代理程式並行** | 可同時派遣 5 個以上的代理程式處理不同工作 |
+| **構件（Artifacts）** | 代理程式會產生工作計畫、實作計畫、程式碼差異、螢幕截圖、瀏覽器錄影等 |
+| **瀏覽器整合** | 內建 Chrome 瀏覽器子代理程式，可點選、捲動、輸入、讀取控制台等 |
+| **收件匣（Inbox）** | 集中追蹤所有對話與工作狀態 |
+| **Google 文件風格註解** | 可對構件和程式碼差異加上註解，Agent 會根據意見回饋進行修改 |
+
+> 📚 **更多資訊**：請參閱 [Google Antigravity 官方教學](https://codelabs.developers.google.com/getting-started-google-antigravity?hl=zh-tw)
 
 ---
 
@@ -1034,6 +1087,63 @@ A:
 
 ### Q: AI 說找不到 Revit 工具？
 A: 確認 MCP Server 設定檔路徑正確，並重新啟動 AI 應用程式。
+
+---
+
+## 📖 附錄：技術補充說明
+
+> 💡 以下內容為進階技術說明，一般使用者可略過此章節。
+
+### A. 什麼是 WebSocket？
+
+本專案使用 **WebSocket** 作為 MCP Server 與 Revit Add-in 之間的通訊協議。
+
+**WebSocket** 是一種網路通訊標準（非本專案自創名詞），具有以下特點：
+
+| 特性 | 說明 |
+|------|------|
+| **雙向通訊** | 伺服器和客戶端可隨時互相傳送訊息 |
+| **低延遲** | 建立連接後保持開啟，無需每次重新連接 |
+| **即時性** | 適合需要快速回應的操作（如 Revit 即時控制） |
+
+**簡單類比：**
+- 傳統 HTTP = 每次打電話，講完就掛斷
+- WebSocket = 保持通話中，雙方隨時可以說話
+
+### B. 為什麼選擇 WebSocket？
+
+本專案選擇 WebSocket 的理由：
+
+1. **即時性需求** - Revit 操作需要立即回應
+2. **持久連接** - 多個 AI 命令會持續發送，單一連接更有效率
+3. **雙向通訊** - Revit 有時需要主動通知（如進度更新、錯誤訊息）
+4. **跨語言支援** - Node.js 和 C# 都原生支援
+5. **MCP 標準** - Model Context Protocol 官方即採用 WebSocket
+
+### C. 其他通訊技術比較
+
+如果您有興趣了解其他技術選項：
+
+| 技術 | 延遲 | 雙向 | 易用性 | 適用場景 |
+|------|------|------|--------|----------|
+| **WebSocket** ✅ | 低 | ✅ | ⭐⭐⭐⭐ | 本專案選用 |
+| HTTP REST | 高 | ❌ | ⭐⭐⭐⭐⭐ | 簡單查詢 |
+| gRPC | 最低 | ✅ | ⭐⭐ | 高性能場景 |
+| Named Pipes | 最低 | ✅ | ⭐⭐ | 純本機通訊 |
+| SignalR | 低 | ✅ | ⭐⭐⭐⭐ | .NET 生態系 |
+
+### D. 埠號 (Port) 補充說明
+
+本專案預設使用 `8765` 埠號，這是一個任意選擇的數字。
+
+**常見埠號範圍：**
+- `0-1023`：系統保留埠（如 80=HTTP, 443=HTTPS）
+- `1024-49151`：註冊埠（常見應用程式使用）
+- `49152-65535`：動態/私有埠（可自由使用）
+
+`8765` 屬於註冊埠範圍，通常不會與系統服務衝突，但仍可能被其他應用程式佔用。
+
+---
 
 ## 📄 授權
 
