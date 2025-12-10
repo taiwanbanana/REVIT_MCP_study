@@ -48,45 +48,182 @@ REVIT-MCP/
 | 項目 | 需求 |
 |------|------|
 | **作業系統** | Windows 10 或更新版本 |
-| **Revit** | Autodesk Revit 2022 |
+| **Revit** | Autodesk Revit 2022 / 2023 / 2024 |
 | **.NET** | .NET Framework 4.8 |
 | **Node.js** | LTS 版本 (20.x 或更新) |
 
+> 💡 **重要提醒**：此教學以 Revit 2022 為例，但適用於 2022、2023、2024 版本。  
+> 安裝時請根據您的 Revit 版本調整資料夾名稱（見下方各步驟的版本對照表）。
+
 ## 📦 安裝步驟
 
-### 步驟 1：安裝 Revit Add-in
+#### 步驟 1：安裝 Revit Add-in（只需複製檔案）
 
-1. 編譯 `MCP/MCP` 專案（或下載預編譯版本）
-   ```powershell
-   cd MCP/MCP
-   dotnet build -c Release
-   ```
+**簡單說：我們需要把一個檔案放到 Revit 的特定資料夾裡。**
 
-2. 複製檔案到 Revit Add-in 目錄：
-   ```powershell
-   # 複製 DLL 和 addin 檔案
-   $source = "MCP\MCP\bin\Release"
-   $target = "$env:APPDATA\Autodesk\Revit\Addins\2022"
+⚠️ **重要：在開始前，請確認您的 Revit 版本**  
+- 開啟 Revit
+- 點擊左上角的「Autodesk Revit 202X」（X 是您的版本號）
+- 再點擊「幫助」→「關於 Autodesk Revit」
+- 查看版本號並記住它（例如：2022、2023 或 2024）
+
+#### 方式 A：使用現成版本（最簡單！推薦新手）
+
+如果您不想自己動手處理程式，可以直接下載我們已經準備好的檔案：
+
+##### 選項 1：一鍵安裝（最推薦！）
+
+**最簡單的方法：執行自動安裝指令稿**
+
+1. **下載安裝指令稿**
+   - 前往本專案的 `scripts/` 資料夾
+   - 下載 `install-addon.bat`（Windows 自動安裝程式）
+   - 或下載 `install-addon.ps1`（PowerShell 版本）
+
+2. **執行安裝**
+   - **方法 A**：直接雙擊 `install-addon.bat` 檔案
+     - 會自動下載檔案並放到 Revit 資料夾
+     - 自動偵測您的 Revit 版本（2022、2023、2024）
    
-   Copy-Item "$source\RevitMCP.dll" $target
-   Copy-Item "$source\Newtonsoft.Json.dll" $target
-   Copy-Item "MCP\MCP\RevitMCP.addin" $target
-   ```
+   - **方法 B**：用 PowerShell 執行（右鍵以系統管理員身份執行）
+     ```powershell
+     powershell -ExecutionPolicy Bypass -File install-addon.ps1
+     ```
 
-3. 重新啟動 Revit
+3. **完成！**
+   - 看到「安裝成功」訊息就代表完成了
+   - 重新啟動 Revit
 
-### 步驟 2：安裝 MCP Server
+> 💡 **自動安裝指令稿的優點**：
+> - 自動偵測 Revit 版本，無需手動修改路徑
+> - 自動下載最新的 RevitMCP.dll 和 RevitMCP.addin
+> - 自動複製到正確的資料夾
+> - 不需要懂命令列指令
 
-1. 安裝相依套件
-   ```bash
-   cd MCP-Server
-   npm install
-   ```
+##### 選項 2：手動安裝
 
-2. 編譯 TypeScript
-   ```bash
-   npm run build
-   ```
+如果您不想用指令稿，也可以手動複製檔案：
+
+1. **下載預編譯檔案**
+   - 前往本專案的 `Releases` 頁面
+   - 點擊最新版本中的「RevitMCP.dll」和「RevitMCP.addin」
+   - 將這 2 個檔案下載到桌面
+
+2. **把檔案放到 Revit 的資料夾**
+   - 按 `Windows 鍵 + R`，會看到一個「執行」視窗
+   - 複製貼上以下路徑，按 Enter（**注意：把 2022 改成您的 Revit 版本**）：
+     ```
+     %APPDATA%\Autodesk\Revit\Addins\2022
+     ```
+     
+   > 💡 **版本對照表**：
+   > - Revit 2022：`Addins\2022`
+   > - Revit 2023：`Addins\2023`
+   > - Revit 2024：`Addins\2024`
+   > 
+   > 不確定您的 Revit 版本？打開 Revit → 幫助 → 關於 Revit，會看到版本號
+
+   - 會自動打開 Revit 的 Add-in 資料夾
+   - 把剛才下載的 2 個檔案放進去
+
+3. **重新啟動 Revit**
+   - 如果 Revit 正在執行，請完全關閉它
+   - 再重新開啟 Revit
+
+#### 方式 B：自己手動製作程式（適合開發者）
+
+如果您懂程式碼，或想學習如何製作：
+
+1. **確認已安裝 .NET SDK**
+   - 打開命令提示字元（按 `Win + R`，輸入 `cmd`）
+   - 輸入：`dotnet --version`
+   - 如果看到版本號（例如 7.0.0），表示已安裝
+   - 如果看到「找不到命令」，請先下載 .NET SDK：https://dotnet.microsoft.com/download
+
+2. **製作程式**
+   - 打開命令提示字元
+   - 輸入以下指令：
+     ```
+     cd C:\Users\您的使用者名稱\Desktop\MCP\REVIT_MCP_study\MCP\MCP
+     dotnet build -c Release
+     ```
+   - 等待製作完成（會看到綠色的「Build succeeded」）
+
+3. **複製製作好的檔案到 Revit 資料夾**
+   - 製作完成後，會在 `bin\Release` 資料夾中生成檔案
+   - 按 `Windows 鍵 + R`，輸入（**注意：把 2022 改成您的 Revit 版本**）：
+     ```
+     %APPDATA%\Autodesk\Revit\Addins\2022
+     ```
+     
+   > 💡 **版本對照表**：
+   > - Revit 2022：`Addins\2022`
+   > - Revit 2023：`Addins\2023`
+   > - Revit 2024：`Addins\2024`
+
+   - 把 `bin\Release` 資料夾中的所有 `.dll` 檔案和 `.addin` 檔案複製進去
+
+4. **重新啟動 Revit**
+
+### 步驟 2：安裝 MCP Server（AI 和 Revit 的「翻譯官」）
+
+**簡單說：我們需要安裝一些軟體工具，讓 AI 能和 Revit 溝通。**
+
+#### 前置準備：檢查是否已安裝 Node.js
+
+MCP Server 需要 Node.js 才能執行。先檢查您是否已安裝：
+
+1. **打開命令提示字元**
+   - 按 `Win + R`
+   - 輸入 `cmd`，按 Enter
+
+2. **檢查 Node.js**
+   - 在命令提示字元輸入：`node --version`
+   - 如果看到版本號（例如 v20.0.0），表示已安裝，**跳過下載步驟**
+   - 如果看到「找不到命令」，表示未安裝，請按以下步驟下載
+
+3. **下載並安裝 Node.js**（如果需要）
+   - 打開瀏覽器，訪問 https://nodejs.org
+   - 點擊左邊的「LTS」按鈕（推薦版本）
+   - 下載 Windows 安裝程式（`.msi` 檔案）
+   - 執行下載的安裝程式，一直點「Next」直到完成
+   - 重新啟動電腦
+
+#### 安裝步驟
+
+1. **打開命令提示字元**
+   - 按 `Win + R`
+   - 輸入 `cmd`，按 Enter
+
+2. **進入 MCP Server 資料夾**
+   - 複製貼上以下指令，按 Enter（**注意：把路徑中的使用者名稱改成您電腦的帳號，版本號保持不變或根據需要修改**）：
+     ```
+     cd C:\Users\您的使用者名稱\Desktop\MCP\REVIT_MCP_study\MCP-Server
+     ```
+   - 提示：「您的使用者名稱」是您 Windows 登入時用的帳號名稱
+   
+   > 💡 **路徑可能不同？**
+   > - 如果您把專案資料夾放在不同位置（例如 C:\MCP），請自行調整上面的路徑
+   > - 要找到專案資料夾：用滑鼠右鍵點擊 MCP-Server 資料夾 → 內容 → 位置，複製該路徑即可
+
+3. **安裝軟體相依套件**
+   - 在命令提示字元輸入：
+     ```
+     npm install
+     ```
+   - 會自動下載並安裝所需的軟體
+   - 等待完成（可能需要 1-5 分鐘）
+   - 完成時應該看到「added XXX packages」
+
+4. **製作程式（轉換成可執行的檔案）**
+   - 輸入以下指令：
+     ```
+     npm run build
+     ```
+   - 等待完成
+   - 完成時應該看到一個 `build/` 資料夾被建立
+
+**恭喜！您已經完成安裝了。** 現在可以進行下一步的設定。
 
 ### 步驟 3：設定 AI 平台
 
@@ -385,6 +522,11 @@ Anthropic 官方桌面應用程式，這是**最簡單的方式**。
      ```
      REVIT_VERSION: 2022
      ```
+     
+   > 💡 **版本不同？修改環境變數**：
+   > - Revit 2022：改為 `REVIT_VERSION: 2022`
+   > - Revit 2023：改為 `REVIT_VERSION: 2023`
+   > - Revit 2024：改為 `REVIT_VERSION: 2024`
 
 6. **點擊「Save」或「儲存」** - 完成！
 
