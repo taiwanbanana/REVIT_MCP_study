@@ -69,16 +69,17 @@
 ```
 REVIT-MCP/
 ├── MCP/                    # Revit Add-in (C#)
-│   └── MCP/
-│       ├── Application.cs           # 主程式進入點
-│       ├── ConnectCommand.cs        # 連線命令
-│       ├── RevitMCP.addin           # Add-in 配置
-│       ├── Core/                    # 核心功能
-│       │   ├── SocketService.cs     # WebSocket 服務
-│       │   ├── CommandExecutor.cs   # 命令執行器
-│       │   └── ExternalEventManager.cs
-│       ├── Models/                  # 資料模型
-│       └── Configuration/           # 設定管理
+│   ├── Application.cs           # 主程式進入點
+│   ├── ConnectCommand.cs        # 連線命令
+│   ├── RevitMCP.addin           # Add-in 配置
+│   ├── RevitMCP.csproj          # 專案檔 (Revit 2022/2023)
+│   ├── RevitMCP.2024.csproj     # 專案檔 (Revit 2024)
+│   ├── Core/                    # 核心功能
+│   │   ├── SocketService.cs     # WebSocket 服務
+│   │   ├── CommandExecutor.cs   # 命令執行器
+│   │   └── ExternalEventManager.cs
+│   ├── Models/                  # 資料模型
+│   └── Configuration/           # 設定管理
 ├── MCP-Server/             # MCP Server (Node.js/TypeScript)
 │   ├── src/
 │   │   ├── index.ts                 # MCP Server 主程式

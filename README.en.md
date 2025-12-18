@@ -51,22 +51,23 @@ Enable AI language models to directly control Autodesk Revit via Model Context P
 ```
 REVIT-MCP/
 ├── MCP/                    # Revit Add-in (C#)
-│   └── MCP/
-│       ├── Application.cs           # Main entry point
-│       ├── ConnectCommand.cs        # Connection command
-│       ├── RevitMCP.addin           # Add-in configuration
-│       ├── Core/                    # Core functionality
-│       │   ├── SocketService.cs     # WebSocket service
-│       │   ├── CommandExecutor.cs   # Command executor
-│       │   └── ExternalEventManager.cs
-│       ├── Models/                  # Data models
-│       └── Configuration/           # Configuration management
+│   ├── Application.cs           # Main entry point
+│   ├── ConnectCommand.cs        # Connection command
+│   ├── RevitMCP.addin           # Add-in configuration
+│   ├── RevitMCP.csproj          # Project file (Revit 2022/2023)
+│   ├── RevitMCP.2024.csproj     # Project file (Revit 2024)
+│   ├── Core/                    # Core functionality
+│   │   ├── SocketService.cs     # WebSocket service
+│   │   ├── CommandExecutor.cs   # Command executor
+│   │   └── ExternalEventManager.cs
+│   ├── Models/                  # Data models
+│   └── Configuration/           # Configuration management
 ├── MCP-Server/             # MCP Server (Node.js/TypeScript)
 │   ├── src/
 │   │   ├── index.ts                 # MCP Server main program
 │   │   ├── socket.ts                # Socket client
 │   │   └── tools/
-│       └── revit-tools.ts       # Revit tool definitions
+│   │       └── revit-tools.ts       # Revit tool definitions
 │   ├── build/                       # Build output
 │   ├── package.json
 │   └── tsconfig.json
