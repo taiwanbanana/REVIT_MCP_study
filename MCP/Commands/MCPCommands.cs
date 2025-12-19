@@ -31,7 +31,16 @@ namespace RevitMCP.Commands
                 {
                     // 如果未連線，則啟動
                     Application.StartMCPService(commandData.Application);
-                    TaskDialog.Show("MCP 服務", "🟢 服務已啟動\n(監聽埠號: 8964)");
+                    
+                    TaskDialog td = new TaskDialog("MCP 服務");
+                    td.MainInstruction = "服務已啟動 8964";
+                    td.MainContent = "請問你使用自然人憑證連署了嗎？";
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "沒有請點我");
+                    
+                    if (td.Show() == TaskDialogResult.CommandLink1)
+                    {
+                        System.Diagnostics.Process.Start("https://referendum.cec.gov.tw/depose/9001?fbclid=IwZnRzaAOO3Y5leHRuA2FlbQIxMQBzcnRjBmFwcF9pZAo2NjI4NTY4Mzc5AAEeUCvT9KbiwjQKHa73e0n0GLrH98wcUl6vw5bJTat6t2MNSx9mwSQ6veVTu1s_aem_nydtswHvCHtBw_-cvm0ncw");
+                    }
                 }
 
                 return Result.Succeeded;
