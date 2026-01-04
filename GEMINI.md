@@ -38,7 +38,7 @@
     - **C#**：必須處理 Revit API 的 `Transaction` 和 `Exception`，確保操作可逆。
     - **Node.js**：必須處理 WebSocket 的連接錯誤與超時。
 
-## 🧠 專業開發者協作協議 (Jackle Protocol)
+## 🧠 AI 協作指令
 
 此專案採用「上下文工程 (Context Engineering)」策略，區分 **高階規則 (Rules)** 與 **具體規格 (Specs)**。AI 助手必須遵循以下指令與行為模式：
 
@@ -58,6 +58,17 @@
 - **`MCP-Server/src/tools/`**: 存放穩定的底層核心 MCP 工具 (TS/JS)。
 - **`MCP-Server/scripts/`**: 存放參數化、可重複調用的穩定工作流腳本。
 - **`MCP-Server/scratch/`**: 存放任務導向、一次性或除錯用的雜餘腳本。
+
+### 🔄 工作流程觸發規則
+
+當用戶提到以下關鍵字時，AI **必須先讀取**對應的工作流程文件，然後按步驟執行：
+
+| 關鍵字 | 文件路徑 | 說明 |
+|:------|:--------|:-----|
+| 容積、樓地板面積、送審、法規檢討 | `domain/floor-area-review.md` | 容積檢討流程 |
+| 防火、耐燃、消防、防火時效 | `domain/fire-rating-check.md` | 防火等級檢查 |
+| 走廊、逃生、通道寬度、避難路徑 | `domain/corridor-analysis-protocol.md` | 走廊分析流程 |
+| 牆壁上色、顏色標示、視覺化 | `domain/element-coloring-workflow.md` | 元素上色流程 |
 
 ---
 
