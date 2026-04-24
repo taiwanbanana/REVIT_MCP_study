@@ -1,23 +1,36 @@
-<Project Sdk="Nice3point.Revit.Sdk/6.1.0">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
     <RootNamespace>RevitMCP</RootNamespace>
     <AssemblyName>RevitMCP</AssemblyName>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
-    <!-- DeployAddin 關閉：避免 SDK 自動產生 RevitMCP.{version}.addin 造成重複載入 -->
-    <!-- 部署請使用 setup.ps1 或 /deploy-addon skill -->
-    <DeployAddin>false</DeployAddin>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <Configurations>
-      Debug.R22;Debug.R23;Debug.R24;Debug.R25;Debug.R26;
-      Release.R22;Release.R23;Release.R24;Release.R25;Release.R26
-    </Configurations>
+    <LangVersion>latest</LangVersion>
+    <Platforms>AnyCPU</Platforms>
+    <Configurations>Release.R24;Debug.R24</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Web" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="ClosedXML" Version="0.102.3" />
   </ItemGroup>
