@@ -68,6 +68,29 @@ function Copy-RequiredFile {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 
+function Copy-RuntimeJsTree {
+    param(
+        [string]$SourceRoot,
+        [string]$DestinationRoot
+    )
+
+    if (-not (Test-Path $SourceRoot)) {
+        throw "Runtime build folder not found: $SourceRoot"
+    }
+
+    New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
+
+    Get-ChildItem -LiteralPath $SourceRoot -Recurse -File -Filter "*.js" | ForEach-Object {
+        $relativePath = $_.FullName.Substring($SourceRoot.Length).TrimStart('\', '/')
+        $destination = Join-Path $DestinationRoot $relativePath
+        $destinationDir = Split-Path -Parent $destination
+        if (-not (Test-Path $destinationDir)) {
+            New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+        }
+        Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
+    }
+}
+
 $scriptDir = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($scriptDir)) {
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -137,7 +160,7 @@ if (Test-Path (Join-Path $serverDir "package-lock.json")) {
 if (-not (Test-Path (Join-Path $serverDir "build\index.js"))) {
     throw "MCP Server build output not found. Run without -SkipServerBuild or build MCP-Server first."
 }
-Copy-Item -LiteralPath (Join-Path $serverDir "build") -Destination $serverOut -Recurse -Force
+Copy-RuntimeJsTree -SourceRoot (Join-Path $serverDir "build") -DestinationRoot (Join-Path $serverOut "build")
 
 Write-Step "Building and copying Revit add-ins"
 $addinSource = Join-Path $mcpDir "RevitMCP.addin"
@@ -336,6 +359,18 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 - `install.ps1`
 - `uninstall.ps1`
 - `start-mcp-server.bat`
+
+## What Is Included
+
+Runtime package contents are limited to:
+
+- Revit add-in binaries and `.addin` manifests
+- MCP Server compiled JavaScript runtime
+- MCP Server `package.json` / `package-lock.json`
+- Installation, uninstallation, and server start scripts
+
+AI-agent instructions, domain knowledge, docs, logs, scratch files, test RFA files,
+TypeScript declaration files, and source maps are intentionally excluded.
 '@
 
 Set-Content -LiteralPath (Join-Path $OutputDir "install.ps1") -Value $installScript -Encoding UTF8
