@@ -25,6 +25,27 @@ namespace RevitMCP.Core
     {
         private readonly UIApplication _uiApp;
 
+        /// <summary>
+        /// 靜態內部類：強制抑制所有 Revit 彈窗（警告刪除，錯誤回滾）
+        /// </summary>
+        public class SimpleFailurePreprocessor : IFailuresPreprocessor
+        {
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+            {
+                // 1. 刪除所有警告
+                failuresAccessor.DeleteAllWarnings();
+
+                // 2. 檢查是否有錯誤
+                var errors = failuresAccessor.GetFailureMessages().Where(f => f.GetSeverity() == FailureSeverity.Error);
+                if (errors.Any())
+                {
+                    // 遇到錯誤直接回滾事務，防止彈出錯誤對話框
+                    return FailureProcessingResult.ProceedWithRollBack;
+                }
+                return FailureProcessingResult.Continue;
+            }
+        }
+
         public CommandExecutor(UIApplication uiApp)
         {
             _uiApp = uiApp ?? throw new ArgumentNullException(nameof(uiApp));
@@ -76,6 +97,18 @@ namespace RevitMCP.Core
                     case "get_project_info":
                         result = GetProjectInfo();
                         break;
+                    
+                    case "open_document":
+                        result = OpenDocument(parameters);
+                        break;
+
+                    case "save_as_document":
+                        result = SaveAsDocument(parameters);
+                        break;
+
+                    case "copy_document":
+                        result = CopyDocument(parameters);
+                        break;
 
                     
                     case "create_floor":
@@ -98,6 +131,10 @@ namespace RevitMCP.Core
                         result = ModifyElementParameter(parameters);
                         break;
                     
+                    case "rename_element":
+                        result = RenameElement(parameters);
+                        break;
+                    
                     case "create_door":
                         result = CreateDoor(parameters);
                         break;
@@ -116,6 +153,10 @@ namespace RevitMCP.Core
                     
                     case "create_column":
                         result = CreateColumn(parameters);
+                        break;
+                    
+                    case "rfa_modify_extrusion":
+                        result = ModifyExtrusion(parameters);
                         break;
                     
                     case "get_furniture_types":
@@ -174,29 +215,21 @@ namespace RevitMCP.Core
                         result = QueryWallsByLocation(parameters);
                         break;
                     
-                                        case "query_elements":
-                    
-                                            result = QueryElements(parameters);
-                    
-                                            break;
-                    
-                                        case "get_active_schema":
-                    
-                                            result = GetActiveSchema(parameters);
-                    
-                                            break;
-                    
-                                        case "get_category_fields":
-                    
-                                            result = GetCategoryFields(parameters);
-                    
-                                            break;
-                    
-                                        case "get_field_values":
-                    
-                                            result = GetFieldValues(parameters);
-                    
-                                            break;
+                    case "query_elements":
+                        result = QueryElements(parameters);
+                        break;
+
+                    case "get_active_schema":
+                        result = GetActiveSchema(parameters);
+                        break;
+
+                    case "get_category_fields":
+                        result = GetCategoryFields(parameters);
+                        break;
+
+                    case "get_field_values":
+                        result = GetFieldValues(parameters);
+                        break;
                     
                                         case "override_element_graphics":
                         result = OverrideElementGraphics(parameters);
@@ -241,6 +274,15 @@ namespace RevitMCP.Core
                     case "add_pipe_cap":
                         result = AddPipeCap(parameters);
                         break;
+
+                    case "get_all_used_families_in_model":
+                        result = GetAllUsedFamiliesInModel();
+                        break;
+
+                    case "get_all_used_types_of_families":
+                        result = GetAllUsedTypesOfFamilies(parameters);
+                        break;
+
 
                     // === 帷幕牆模組 (PR#11) ===
                     case "get_curtain_wall_info":
@@ -379,6 +421,54 @@ namespace RevitMCP.Core
                         result = ExportClashReport(parameters);
                         break;
 
+                    case "get_open_documents":
+                        result = GetOpenDocuments();
+                        break;
+
+                    case "remove_cad_imports":
+                        result = RemoveCadImports(parameters);
+                        break;
+
+                    case "batch_modify_family_parameters":
+                        result = BatchModifyFamilyParameters(parameters);
+                        break;
+
+                    case "check_cad_imports":
+                        result = CheckCadImports(parameters);
+                        break;
+
+                    case "zoom_to_fit":
+                        result = ZoomToFit(parameters);
+                        break;
+
+                    case "batch_rename_family_types":
+                        result = BatchRenameFamilyTypes(parameters);
+                        break;
+
+                    case "rfa_modify_parameter":
+                        result = ModifyFamilyParameter(parameters);
+                        break;
+                    case "rfa_set_category":
+                        result = SetFamilyCategory(parameters);
+                        break;
+                    case "rfa_create_extrusion":
+                        result = CreateExtrusionInFamily(parameters);
+                        break;
+                    case "unpin_element":
+                        result = UnpinElement(parameters);
+                        break;
+                    case "move_element":
+                        result = MoveElement(parameters);
+                        break;
+
+                    case "batch_switch_to_3d_view":
+                        result = BatchSwitchTo3DView(parameters);
+                        break;
+
+                    case "batch_save_and_close":
+                        result = BatchSaveAndClose(parameters);
+                        break;
+
                     default:
                         throw new NotImplementedException($"未實作的命令: {request.CommandName}");
                 }
@@ -510,14 +600,36 @@ namespace RevitMCP.Core
         /// </summary>
         private object GetElementInfo(JObject parameters)
         {
-            Document doc = _uiApp.ActiveUIDocument.Document;
-            IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
-
-            Element element = doc.GetElement(new ElementId(elementId));
-            if (element == null)
+            IdType idValue = parameters["elementId"]?.Value<IdType>() ?? 0;
+            string docTitle = parameters["documentName"]?.Value<string>();
+            ElementId id = new ElementId(idValue);
+            
+            Document targetDoc = null;
+            if (!string.IsNullOrEmpty(docTitle))
             {
-                throw new Exception($"找不到元素 ID: {elementId}");
+                targetDoc = _uiApp.Application.Documents.Cast<Document>()
+                    .FirstOrDefault(d => d.Title.Equals(docTitle, StringComparison.OrdinalIgnoreCase) || 
+                                         d.PathName.Contains(docTitle));
             }
+
+            if (targetDoc == null)
+            {
+                targetDoc = _uiApp.ActiveUIDocument.Document;
+                if (targetDoc.GetElement(id) == null)
+                {
+                    foreach (Document d in _uiApp.Application.Documents)
+                    {
+                        if (d.GetElement(id) != null)
+                        {
+                            targetDoc = d;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            Element element = targetDoc.GetElement(id);
+            if (element == null) throw new Exception($"找不到元素 ID: {idValue}");
 
             var parameterList = new List<object>();
             foreach (Parameter param in element.Parameters)
@@ -527,19 +639,25 @@ namespace RevitMCP.Core
                     parameterList.Add(new
                     {
                         Name = param.Definition.Name,
-                        Value = param.AsValueString() ?? param.AsString(),
+                        Id = param.Id.IntegerValue,
+                        Value = param.AsValueString() ?? param.AsString() ?? param.AsDouble().ToString(),
+                        ValueId = param.StorageType == StorageType.ElementId ? param.AsElementId().GetIdValue() : 0,
                         Type = param.StorageType.ToString()
                     });
                 }
             }
 
+            string categoryName = null;
+            try { categoryName = element.Category?.Name; }
+            catch { categoryName = "Error: Category unexpectedly NULL"; }
+
             return new
             {
-                ElementId = element.Id.GetIdValue(),
+                ElementId = idValue.ToString(),
                 Name = element.Name,
-                Category = element.Category?.Name,
-                Type = doc.GetElement(element.GetTypeId())?.Name,
-                Level = doc.GetElement(element.LevelId)?.Name,
+                Document = targetDoc.Title,
+                Category = categoryName,
+                Type = targetDoc.GetElement(element.GetTypeId())?.Name,
                 Parameters = parameterList
             };
         }
@@ -641,63 +759,110 @@ namespace RevitMCP.Core
         /// </summary>
         private object ModifyElementParameter(JObject parameters)
         {
-            Document doc = _uiApp.ActiveUIDocument.Document;
+            string docTitle = parameters["documentName"]?.Value<string>();
+            Document doc = null;
+            if (!string.IsNullOrEmpty(docTitle))
+            {
+                doc = _uiApp.Application.Documents.Cast<Document>()
+                    .FirstOrDefault(d => d.Title.Equals(docTitle, StringComparison.OrdinalIgnoreCase) || 
+                                         d.PathName.Contains(docTitle));
+            }
+            
+            if (doc == null) doc = _uiApp.ActiveUIDocument.Document;
+
             IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
             string parameterName = parameters["parameterName"]?.Value<string>();
             string value = parameters["value"]?.Value<string>();
 
-            if (string.IsNullOrEmpty(parameterName))
-            {
-                throw new Exception("請指定參數名稱");
-            }
-
             Element element = doc.GetElement(new ElementId(elementId));
-            if (element == null)
-            {
-                throw new Exception($"找不到元素 ID: {elementId}");
-            }
+            if (element == null) throw new Exception($"找不到元素 ID: {elementId}");
 
             using (Transaction trans = new Transaction(doc, "修改參數"))
             {
                 trans.Start();
+                Parameter param = null;
+                
+                // 優先使用內建參數 (BIP) 以避免同名衝突
+                if (parameterName == "擠出開始") param = element.get_Parameter(BuiltInParameter.EXTRUSION_START_PARAM);
+                else if (parameterName == "擠出終點") param = element.get_Parameter(BuiltInParameter.EXTRUSION_END_PARAM);
+                else if (parameterName == "寬度") param = element.get_Parameter(BuiltInParameter.FAMILY_WIDTH_PARAM);
+                else if (parameterName == "高度") param = element.get_Parameter(BuiltInParameter.FAMILY_HEIGHT_PARAM);
+                
+                if (param == null) param = element.LookupParameter(parameterName);
+
+                if (param == null) throw new Exception($"找不到參數: {parameterName}");
+                if (param.IsReadOnly) throw new Exception($"參數 {parameterName} 是唯讀的");
 
                 bool success = false;
-
-                // 特殊處理：重命名 (直接修改 Element.Name 屬性)
-                if (parameterName == "Name" || parameterName == "名稱" || parameterName == "類型名稱" || parameterName == "-1002001")
+                switch (param.StorageType)
                 {
-                    element.Name = value;
-                    success = true;
-                }
-                else
-                {
-                    Parameter param = element.LookupParameter(parameterName);
-                    if (param == null)
-                    {
-                        throw new Exception($"找不到參數: {parameterName}");
-                    }
-
-                    if (param.IsReadOnly)
-                    {
-                        throw new Exception($"參數 {parameterName} 是唯讀的");
-                    }
-
-                    switch (param.StorageType)
-                    {
-                        case StorageType.String:
-                            success = param.Set(value);
-                            break;
-                        case StorageType.Double:
-                            if (double.TryParse(value, out double dVal))
-                                success = param.Set(dVal);
-                            break;
-                        case StorageType.Integer:
-                            if (int.TryParse(value, out int iVal))
-                                success = param.Set(iVal);
-                            break;
-                        default:
-                            throw new Exception($"不支援的參數類型: {param.StorageType}");
-                    }
+                    case StorageType.String:
+                        success = param.Set(value);
+                        break;
+                    case StorageType.Double:
+                        if (double.TryParse(value, out double dVal))
+                        {
+                            double finalVal = dVal;
+                            
+                            // 自動判定單位轉換
+                            bool isLength = parameterName.Contains("厚") || parameterName.Contains("長") || 
+                                            parameterName.Contains("寬") || parameterName.Contains("高") || 
+                                            parameterName.Contains("擠出") || parameterName.Contains("偏移");
+                            
+                            if (isLength && dVal > 5) {
+                                finalVal = dVal / 304.8;
+                            }
+                            
+                            success = param.Set(finalVal);
+                        }
+                        break;
+                    case StorageType.Integer:
+                        if (int.TryParse(value, out int iVal)) success = param.Set(iVal);
+                        break;
+                    case StorageType.ElementId:
+                        if (long.TryParse(value, out long idLong))
+                        {
+                            success = param.Set(new ElementId(idLong));
+                        }
+                        else
+                        {
+                            // 嘗試搜尋材料
+                            var material = new FilteredElementCollector(doc)
+                                .OfClass(typeof(Material))
+                                .FirstOrDefault(m => m.Name.Equals(value, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (material != null)
+                            {
+                                success = param.Set(material.Id);
+                                Logger.Info($"[ModifyParam] 找到材質 {value}, ID: {material.Id}");
+                            }
+                            else
+                            {
+                                // 針對族群編輯器，從 Settings.Categories 搜尋
+                                Category subCat = null;
+                                foreach (Category mainCat in doc.Settings.Categories)
+                                {
+                                    if (mainCat.SubCategories.Contains(value))
+                                    {
+                                        subCat = mainCat.SubCategories.get_Item(value);
+                                        Logger.Info($"[ModifyParam] 找到子品類 {value} 在主品類 {mainCat.Name} 中");
+                                        break;
+                                    }
+                                }
+                                
+                                if (subCat != null)
+                                {
+                                    success = param.Set(subCat.Id);
+                                    Logger.Info($"[ModifyParam] 寫入 Category ID: {subCat.Id}");
+                                }
+                                else
+                                {
+                                    Logger.Info($"[ModifyParam] 找不到子品類: {value}");
+                                    throw new Exception($"無法在模型中找到名稱為 '{value}' 的材料或子品類");
+                                }
+                            }
+                        }
+                        break;
                 }
 
                 if (!success)
@@ -718,6 +883,41 @@ namespace RevitMCP.Core
         }
 
         /// <summary>
+        /// 重新命名元素
+        /// </summary>
+        private object RenameElement(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
+            string newName = parameters["newName"]?.Value<string>();
+
+            if (string.IsNullOrEmpty(newName))
+            {
+                throw new Exception("必須提供 newName");
+            }
+
+            Element element = doc.GetElement(new ElementId(elementId));
+            if (element == null)
+            {
+                throw new Exception($"找不到元素 ID: {elementId}");
+            }
+
+            using (Transaction trans = new Transaction(doc, "重新命名元素"))
+            {
+                trans.Start();
+                element.Name = newName;
+                trans.Commit();
+            }
+
+            return new
+            {
+                ElementId = elementId.ToString(),
+                NewName = newName,
+                Message = $"成功將元素重新命名為 {newName}"
+            };
+        }
+
+        /// <summary>
         /// 建立門
         /// </summary>
         private object CreateDoor(JObject parameters)
@@ -726,36 +926,54 @@ namespace RevitMCP.Core
             IdType wallId = parameters["wallId"]?.Value<IdType>() ?? 0;
             double locationX = parameters["locationX"]?.Value<double>() ?? 0;
             double locationY = parameters["locationY"]?.Value<double>() ?? 0;
+            string doorType = parameters["doorType"]?.Value<string>();
 
-            Wall wall = doc.GetElement(new ElementId(wallId)) as Wall;
-            if (wall == null)
+            // 1. 取得門類型 (在 Transaction 外部)
+            FamilySymbol doorSymbol = null;
+            if (!string.IsNullOrEmpty(doorType))
             {
-                throw new Exception($"找不到牆 ID: {wallId}");
+                doorSymbol = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilySymbol))
+                    .OfCategory(BuiltInCategory.OST_Doors)
+                    .Cast<FamilySymbol>()
+                    .FirstOrDefault(s => s.Name == doorType || (s.FamilyName + ":" + s.Name) == doorType);
             }
 
-            using (Transaction trans = new Transaction(doc, "建立門"))
+            if (doorSymbol == null)
             {
-                trans.Start();
-
-                // 取得門類型
-                FamilySymbol doorSymbol = new FilteredElementCollector(doc)
+                doorSymbol = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilySymbol))
                     .OfCategory(BuiltInCategory.OST_Doors)
                     .Cast<FamilySymbol>()
                     .FirstOrDefault();
+            }
 
-                if (doorSymbol == null)
-                {
-                    throw new Exception("找不到門類型");
-                }
+            if (doorSymbol == null) throw new Exception("找不到門類型");
 
-                if (!doorSymbol.IsActive)
+            // 2. 啟動類型 (必須在 Transaction 外部或獨立 Transaction)
+            if (!doorSymbol.IsActive)
+            {
+                using (Transaction t = new Transaction(doc, "啟動門類型"))
                 {
+                    t.Start();
                     doorSymbol.Activate();
-                    doc.Regenerate();
+                    t.Commit();
                 }
+            }
 
-                // 取得牆的樓層
+            // 3. 執行放置
+            using (Transaction trans = new Transaction(doc, "建立門"))
+            {
+                FailureHandlingOptions failOptions = trans.GetFailureHandlingOptions();
+                failOptions.SetFailuresPreprocessor(new SimpleFailurePreprocessor());
+                failOptions.SetClearAfterRollback(true);
+                trans.SetFailureHandlingOptions(failOptions);
+
+                trans.Start();
+
+                Wall wall = doc.GetElement(new ElementId(wallId)) as Wall;
+                if (wall == null) throw new Exception($"找不到牆 ID: {wallId}");
+
                 Level level = doc.GetElement(wall.LevelId) as Level;
                 XYZ location = new XYZ(locationX / 304.8, locationY / 304.8, level?.Elevation ?? 0);
 
@@ -784,36 +1002,54 @@ namespace RevitMCP.Core
             IdType wallId = parameters["wallId"]?.Value<IdType>() ?? 0;
             double locationX = parameters["locationX"]?.Value<double>() ?? 0;
             double locationY = parameters["locationY"]?.Value<double>() ?? 0;
+            string windowType = parameters["windowType"]?.Value<string>();
 
-            Wall wall = doc.GetElement(new ElementId(wallId)) as Wall;
-            if (wall == null)
+            // 1. 取得窗類型
+            FamilySymbol windowSymbol = null;
+            if (!string.IsNullOrEmpty(windowType))
             {
-                throw new Exception($"找不到牆 ID: {wallId}");
+                windowSymbol = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilySymbol))
+                    .OfCategory(BuiltInCategory.OST_Windows)
+                    .Cast<FamilySymbol>()
+                    .FirstOrDefault(s => s.Name == windowType || (s.FamilyName + ":" + s.Name) == windowType);
             }
 
-            using (Transaction trans = new Transaction(doc, "建立窗"))
+            if (windowSymbol == null)
             {
-                trans.Start();
-
-                // 取得窗類型
-                FamilySymbol windowSymbol = new FilteredElementCollector(doc)
+                windowSymbol = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilySymbol))
                     .OfCategory(BuiltInCategory.OST_Windows)
                     .Cast<FamilySymbol>()
                     .FirstOrDefault();
+            }
 
-                if (windowSymbol == null)
-                {
-                    throw new Exception("找不到窗類型");
-                }
+            if (windowSymbol == null) throw new Exception("找不到窗類型");
 
-                if (!windowSymbol.IsActive)
+            // 2. 啟動
+            if (!windowSymbol.IsActive)
+            {
+                using (Transaction t = new Transaction(doc, "啟動窗類型"))
                 {
+                    t.Start();
                     windowSymbol.Activate();
-                    doc.Regenerate();
+                    t.Commit();
                 }
+            }
 
-                // 取得牆的樓層
+            // 3. 執行放置
+            using (Transaction trans = new Transaction(doc, "建立窗"))
+            {
+                FailureHandlingOptions failOptions = trans.GetFailureHandlingOptions();
+                failOptions.SetFailuresPreprocessor(new SimpleFailurePreprocessor());
+                failOptions.SetClearAfterRollback(true);
+                trans.SetFailureHandlingOptions(failOptions);
+
+                trans.Start();
+
+                Wall wall = doc.GetElement(new ElementId(wallId)) as Wall;
+                if (wall == null) throw new Exception($"找不到牆 ID: {wallId}");
+
                 Level level = doc.GetElement(wall.LevelId) as Level;
                 XYZ location = new XYZ(locationX / 304.8, locationY / 304.8, (level?.Elevation ?? 0) + 3); // 窗戶高度 3 英尺
 
@@ -2165,6 +2401,7 @@ namespace RevitMCP.Core
             try
             {
                 string categoryName = parameters["category"]?.Value<string>();
+                string docTitle = parameters["documentName"]?.Value<string>();
                 IdType? viewId = parameters["viewId"]?.Value<IdType>();
                 int maxCount = parameters["maxCount"]?.Value<int>() ?? 100;
                 JArray filters = parameters["filters"] as JArray;
@@ -2175,12 +2412,19 @@ namespace RevitMCP.Core
                 string typeFilter = parameters["type"]?.Value<string>();
                 string levelFilter = parameters["level"]?.Value<string>();
 
-                if (string.IsNullOrEmpty(categoryName))
-                {
-                    throw new Exception("必須提供 category 參數（例如：Walls, Rooms, Doors, Windows）");
-                }
 
-                Document doc = _uiApp.ActiveUIDocument.Document;
+                Document doc = null;
+                if (!string.IsNullOrEmpty(docTitle))
+                {
+                    doc = _uiApp.Application.Documents.Cast<Document>()
+                        .FirstOrDefault(d => d.Title.Equals(docTitle, StringComparison.OrdinalIgnoreCase) || 
+                                             d.PathName.Contains(docTitle));
+                }
+                
+                if (doc == null)
+                {
+                    doc = _uiApp.ActiveUIDocument.Document;
+                }
                 
                 // 使用全文件收集器（避免限定在不適當的 View 導致結果為空）
                 FilteredElementCollector collector;
@@ -2193,23 +2437,31 @@ namespace RevitMCP.Core
                     collector = new FilteredElementCollector(doc);
                 }
 
-                // 1. 品類過濾
-                ElementId catId = ResolveCategoryId(doc, categoryName);
-                if (catId != ElementId.InvalidElementId)
+                if (!string.IsNullOrEmpty(categoryName))
                 {
-                    collector.OfCategoryId(catId);
-                }
-                else
-                {
-                    // 備用方案: 根據常用名稱
-                    string catLower = categoryName.ToLowerInvariant();
-                    if (catLower == "walls" || catLower == "牆") collector.OfClass(typeof(Wall));
-                    else if (catLower == "rooms" || catLower == "房間") collector.OfCategory(BuiltInCategory.OST_Rooms);
-                    else if (catLower == "doors" || catLower == "門") collector.OfCategory(BuiltInCategory.OST_Doors);
-                    else if (catLower == "windows" || catLower == "窗") collector.OfCategory(BuiltInCategory.OST_Windows);
-                    else if (catLower == "floors" || catLower == "樓板") collector.OfCategory(BuiltInCategory.OST_Floors);
-                    else if (catLower == "columns" || catLower == "柱") collector.OfCategory(BuiltInCategory.OST_Columns);
-                    else throw new Exception($"無法辨識品類: {categoryName}。請使用英文名稱如 Walls, Rooms, Doors, Windows, Floors, Columns");
+                    ElementId catId = ResolveCategoryId(doc, categoryName);
+                    if (catId != ElementId.InvalidElementId)
+                    {
+                        collector.OfCategoryId(catId);
+                    }
+                    else
+                    {
+                        // 備用方案: 根據常用名稱
+                        string catLower = categoryName.ToLowerInvariant();
+                        if (catLower == "walls" || catLower == "牆") collector.OfClass(typeof(Wall));
+                        else if (catLower == "rooms" || catLower == "房間") collector.OfCategory(BuiltInCategory.OST_Rooms);
+                        else if (catLower == "doors" || catLower == "門") collector.OfCategory(BuiltInCategory.OST_Doors);
+                        else if (catLower == "windows" || catLower == "窗") collector.OfCategory(BuiltInCategory.OST_Windows);
+                        else if (catLower == "floors" || catLower == "樓板") collector.OfCategory(BuiltInCategory.OST_Floors);
+                        else if (catLower == "columns" || catLower == "柱") collector.OfCategory(BuiltInCategory.OST_Columns);
+                        else if (catLower == "materials" || catLower == "材料") collector.OfClass(typeof(Material));
+                        else if (catLower == "mullions" || catLower == "豎框" || catLower == "帷幕牆豎框") collector.OfCategory(BuiltInCategory.OST_CurtainWallMullions);
+                        else if (catLower == "generic" || catLower == "一般模型") collector.OfCategory(BuiltInCategory.OST_GenericModel);
+                        else if (catLower == "detail" || catLower == "詳圖項目") collector.OfCategory(BuiltInCategory.OST_DetailComponents);
+                        else if (catLower == "views" || catLower == "視圖") collector.OfClass(typeof(View));
+                        else if (catLower == "styles" || catLower == "樣式") collector.OfClass(typeof(GraphicsStyle));
+                        else throw new Exception($"無法辨識品類: {categoryName}。");
+                    }
                 }
 
                 var elements = collector.WhereElementIsNotElementType().ToElements();
@@ -3607,8 +3859,657 @@ namespace RevitMCP.Core
         }
 
         #endregion
+
+        /// <summary>
+        /// 取得所有開啟的文件
+        /// </summary>
+        private object GetOpenDocuments()
+        {
+            var docs = _uiApp.Application.Documents.Cast<Document>()
+                .Select(d => new
+                {
+                    Title = d.Title,
+                    Path = d.PathName,
+                    IsFamily = d.IsFamilyDocument,
+                    IsReadOnly = d.IsReadOnly,
+                    IsModified = d.IsModified
+                })
+                .ToList();
+
+            return new
+            {
+                Count = docs.Count,
+                Documents = docs
+            };
+        }
+
+        /// <summary>
+        /// 移除所有的 CAD 匯入 (支援批次)
+        /// </summary>
+        private object RemoveCadImports(JToken parameters)
+        {
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? false;
+            
+            var docs = allDocs 
+                ? _uiApp.Application.Documents.Cast<Document>().ToList()
+                : new List<Document> { _uiApp.ActiveUIDocument.Document };
+
+            int totalDeleted = 0;
+            int docCount = 0;
+
+            foreach (var doc in docs)
+            {
+                // 先收集所有 ID，避免「邊迭代邊刪除」的 Revit API 限制
+                var idsToDelete = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ImportInstance))
+                    .ToElementIds()
+                    .ToList();
+
+                int currentCount = idsToDelete.Count;
+                using (Transaction t = new Transaction(doc, "移除 CAD 底圖"))
+                {
+                    t.Start();
+                    foreach (var id in idsToDelete)
+                    {
+                        doc.Delete(id);
+                    }
+                    t.Commit();
+                }
+                totalDeleted += currentCount;
+                docCount++;
+            }
+
+            return new
+            {
+                Success = true,
+                DeletedCount = totalDeleted,
+                DocumentCount = docCount,
+                Message = $"已從 {docCount} 個文件中移除共 {totalDeleted} 個 CAD 底圖。"
+            };
+        }
+
+        /// <summary>
+        /// 批次修改族群參數 (支援多文件)
+        /// </summary>
+        private object BatchModifyFamilyParameters(JToken parameters)
+        {
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? true;
+            var paramList = parameters["parameters"]?.ToObject<List<JObject>>();
+
+            if (paramList == null || paramList.Count == 0)
+                throw new ArgumentException("必須提供 parameters 列表");
+
+            var docs = allDocs 
+                ? _uiApp.Application.Documents.Cast<Document>().Where(d => d.IsFamilyDocument).ToList()
+                : new List<Document> { _uiApp.ActiveUIDocument.Document };
+
+            var results = new List<object>();
+
+            foreach (var doc in docs)
+            {
+                int modifiedCount = 0;
+                using (Transaction t = new Transaction(doc, "批次修改族群參數"))
+                {
+                    t.Start();
+                    foreach (var p in paramList)
+                    {
+                        string name = p["name"]?.ToString();
+                        string val = p["value"]?.ToString();
+
+                        if (string.IsNullOrEmpty(name)) continue;
+
+                        FamilyParameter fp = doc.FamilyManager.get_Parameter(name);
+                        if (fp != null)
+                        {
+                            try {
+                                doc.FamilyManager.Set(fp, val);
+                                modifiedCount++;
+                            } catch { /* 忽略類型不匹配等錯誤 */ }
+                        }
+                    }
+                    t.Commit();
+                }
+                results.Add(new { Title = doc.Title, ModifiedCount = modifiedCount });
+            }
+
+            return new
+            {
+                Success = true,
+                DocumentsProcessed = results.Count,
+                Details = results
+            };
+        }
+
+        /// <summary>
+        /// 檢查 CAD 匯入狀況
+        /// </summary>
+        private object CheckCadImports(JToken parameters)
+        {
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? true;
+            var docs = allDocs 
+                ? _uiApp.Application.Documents.Cast<Document>().ToList()
+                : new List<Document> { _uiApp.ActiveUIDocument.Document };
+
+            var results = new List<object>();
+            foreach (var doc in docs)
+            {
+                var imports = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ImportInstance))
+                    .Cast<ImportInstance>()
+                    .Select(i => i.Name)
+                    .ToList();
+
+                results.Add(new
+                {
+                    Title = doc.Title,
+                    Count = imports.Count,
+                    CADFiles = imports
+                });
+            }
+
+            return new { Success = true, Results = results };
+        }
+
+        /// <summary>
+        /// 視圖最大化 (Zoom to Fit) - 支援多檔案循環
+        /// </summary>
+        private object ZoomToFit(JToken parameters)
+        {
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? true;
+
+            if (allDocs)
+            {
+                // 獲取所有開啟的文件
+                var docs = _uiApp.Application.Documents.Cast<Document>().ToList();
+                Document originalDoc = _uiApp.ActiveUIDocument?.Document;
+
+                foreach (var doc in docs)
+                {
+                    try 
+                    {
+                        // 啟動文件並獲取 UIDocument
+                        UIDocument uidoc = _uiApp.OpenAndActivateDocument(doc.PathName);
+                        if (uidoc != null)
+                        {
+                            foreach (UIView view in uidoc.GetOpenUIViews())
+                            {
+                                view.ZoomToFit();
+                            }
+                        }
+                    }
+                    catch { /* 忽略無法啟動的文件 */ }
+                }
+
+                // 回到原本的文件
+                if (originalDoc != null && originalDoc.PathName != _uiApp.ActiveUIDocument.Document.PathName)
+                {
+                    _uiApp.OpenAndActivateDocument(originalDoc.PathName);
+                }
+            }
+            else
+            {
+                UIDocument uidoc = _uiApp.ActiveUIDocument;
+                if (uidoc != null)
+                {
+                    foreach (UIView view in uidoc.GetOpenUIViews())
+                    {
+                        view.ZoomToFit();
+                    }
+                }
+            }
+
+            return new { Success = true };
+        }
+
+        /// <summary>
+        /// 批次修改族群類型名稱
+        /// </summary>
+        private object BatchRenameFamilyTypes(JToken parameters)
+        {
+            string newName = parameters["newName"]?.Value<string>();
+            if (string.IsNullOrEmpty(newName)) return new { Success = false, Error = "必須提供新的類型名稱" };
+
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? true;
+            var docs = allDocs 
+                ? _uiApp.Application.Documents.Cast<Document>().ToList()
+                : new List<Document> { _uiApp.ActiveUIDocument.Document };
+
+            var results = new List<object>();
+            foreach (var doc in docs)
+            {
+                if (!doc.IsFamilyDocument) continue;
+
+                using (Transaction trans = new Transaction(doc, "Batch Rename Type"))
+                {
+                    trans.Start();
+                    try
+                    {
+                        var mgr = doc.FamilyManager;
+                        if (mgr.CurrentType != null)
+                        {
+                            mgr.RenameCurrentType(newName);
+                            results.Add(new { Title = doc.Title, Success = true });
+                        }
+                        else
+                        {
+                            mgr.NewType(newName);
+                            results.Add(new { Title = doc.Title, Success = true, Note = "Created new type" });
+                        }
+                        trans.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        trans.RollBack();
+                        results.Add(new { Title = doc.Title, Success = false, Error = ex.Message });
+                    }
+                }
+            }
+
+            return new { Success = true, Details = results };
+        }
+
+        /// <summary>
+        /// 批次切換至 3D 視圖 (多文件支援)
+        /// </summary>
+        private object BatchSwitchTo3DView(JToken parameters)
+        {
+            bool allDocs = parameters["allDocuments"]?.Value<bool>() ?? true;
+            var docs = allDocs 
+                ? _uiApp.Application.Documents.Cast<Document>().ToList()
+                : new List<Document> { _uiApp.ActiveUIDocument.Document };
+
+            var results = new List<object>();
+            Document originalDoc = _uiApp.ActiveUIDocument?.Document;
+
+            foreach (var doc in docs)
+            {
+                try
+                {
+                    // 尋找 3D 視圖
+                    View3D view3d = new FilteredElementCollector(doc)
+                        .OfClass(typeof(View3D))
+                        .Cast<View3D>()
+                        .FirstOrDefault(v => !v.IsTemplate);
+
+                    if (view3d != null)
+                    {
+                        // 啟動文件並切換視圖
+                        _uiApp.OpenAndActivateDocument(doc.PathName);
+                        _uiApp.ActiveUIDocument.ActiveView = view3d;
+                        results.Add(new { Title = doc.Title, Success = true, ViewName = view3d.Name });
+                    }
+                    else
+                    {
+                        results.Add(new { Title = doc.Title, Success = false, Error = "找不到 3D 視圖" });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new { Title = doc.Title, Success = false, Error = ex.Message });
+                }
+            }
+
+            // 回到原本的文件
+            if (originalDoc != null && originalDoc.PathName != _uiApp.ActiveUIDocument?.Document?.PathName)
+            {
+                try { _uiApp.OpenAndActivateDocument(originalDoc.PathName); } catch { }
+            }
+
+            return new { Success = true, Details = results };
+        }
+
+        /// <summary>
+        /// 在 RFA 中建立擠出實體 (Extrusion)
+        /// </summary>
+        private object CreateExtrusionInFamily(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            if (!doc.IsFamilyDocument) throw new Exception("此工具僅限於族群編輯器 (.rfa) 使用");
+
+            double height = parameters["height"]?.Value<double>() ?? 1000;
+            double startOffset = parameters["start"]?.Value<double>() ?? parameters["offset"]?.Value<double>() ?? 0;
+            JArray points = parameters["points"] as JArray;
+            if (points == null || points.Count < 3) throw new Exception("請提供至少 3 個點位的閉合路徑");
+
+            try
+            {
+                using (Transaction trans = new Transaction(doc, "MCP: Create Extrusion"))
+                {
+                    trans.Start();
+
+                    // 1. 確定工作平面 (SketchPlane)
+                    SketchPlane sp = doc.ActiveView.SketchPlane;
+                    if (sp == null)
+                    {
+                        FilteredElementCollector levelCollector = new FilteredElementCollector(doc);
+                        Level level = levelCollector.OfClass(typeof(Level)).Cast<Level>()
+                                      .FirstOrDefault(l => l.Name.Contains("參考") || l.Name.Contains("Ref"));
+                        
+                        if (level != null) sp = SketchPlane.Create(doc, level.Id);
+                        else {
+                            Plane plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ.Zero);
+                            sp = SketchPlane.Create(doc, plane);
+                        }
+                    }
+
+                    // 2. 取得工作平面的 Z 座標 (確保對齊)
+                    double planeZ = sp.GetPlane().Origin.Z;
+                    Logger.Info($"Using SketchPlane: {sp.Name}, Origin Z: {planeZ * 304.8}mm");
+
+                    // 3. 建立輪廓線 (座標對齊工作平面)
+                    CurveArray profile = new CurveArray();
+                    for (int i = 0; i < points.Count; i++)
+                    {
+                        var p1 = points[i];
+                        var p2 = points[(i + 1) % points.Count];
+                        XYZ start = new XYZ(p1["x"].Value<double>() / 304.8, p1["y"].Value<double>() / 304.8, planeZ);
+                        XYZ end = new XYZ(p2["x"].Value<double>() / 304.8, p2["y"].Value<double>() / 304.8, planeZ);
+                        profile.Append(Line.CreateBound(start, end));
+                    }
+
+                    CurveArrArray curveArrArray = new CurveArrArray();
+                    curveArrArray.Append(profile);
+
+                    // 4. 建立擠出實體
+                    Extrusion extrusion = doc.FamilyCreate.NewExtrusion(true, curveArrArray, sp, (startOffset + height) / 304.8);
+                    extrusion.get_Parameter(BuiltInParameter.EXTRUSION_START_PARAM).Set(startOffset / 304.8);
+                    extrusion.get_Parameter(BuiltInParameter.EXTRUSION_END_PARAM).Set((startOffset + height) / 304.8);
+                    
+                    trans.Commit();
+                    return new { Success = true, ElementId = extrusion.Id.ToString(), Message = "實體建立成功" };
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"rfa_create_extrusion failed: {ex.Message}\n{ex.StackTrace}");
+                return new { Success = false, Error = ex.Message, Details = ex.StackTrace };
+            }
+        }
+
+        /// <summary>
+        /// 修改族群品類 (Family Category)
+        /// </summary>
+        private object SetFamilyCategory(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            if (!doc.IsFamilyDocument) throw new Exception("此工具僅限於族群編輯器 (.rfa) 使用");
+
+            string categoryName = parameters["category"]?.Value<string>();
+            Category targetCat = doc.Settings.Categories.get_Item(categoryName);
+            if (targetCat == null) throw new Exception($"找不到品類: {categoryName}");
+
+            using (Transaction trans = new Transaction(doc, "MCP: Change Category"))
+            {
+                trans.Start();
+                doc.OwnerFamily.FamilyCategory = targetCat;
+                trans.Commit();
+                return new { Success = true, NewCategory = targetCat.Name };
+            }
+        }
+
+        /// <summary>
+        /// 修改族群參數 (Family Parameter)
+        /// </summary>
+        private object ModifyFamilyParameter(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            if (!doc.IsFamilyDocument) throw new Exception("此工具僅限於族群編輯器 (.rfa) 使用");
+
+            string paramName = parameters["name"]?.Value<string>();
+            string valueStr = parameters["value"]?.Value<string>();
+
+            FamilyManager fm = doc.FamilyManager;
+            FamilyParameter fp = fm.get_Parameter(paramName);
+            if (fp == null) throw new Exception($"找不到族群參數: {paramName}");
+
+            using (Transaction trans = new Transaction(doc, "MCP: Modify Family Param"))
+            {
+                trans.Start();
+                if (fp.StorageType == StorageType.Double)
+                {
+                    // 假設傳入為 mm，轉為英呎
+                    if (double.TryParse(valueStr, out double val))
+                        fm.Set(fp, val / 304.8);
+                }
+                else if (fp.StorageType == StorageType.Integer)
+                {
+                    if (int.TryParse(valueStr, out int val))
+                        fm.Set(fp, val);
+                }
+                else
+                {
+                    fm.Set(fp, valueStr);
+                }
+                trans.Commit();
+                return new { Success = true, Parameter = paramName, NewValue = valueStr };
+            }
+        }
+
+        /// <summary>
+        /// 解除元素釘選 (Unpin)
+        /// </summary>
+        private object UnpinElement(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
+
+            Element element = doc.GetElement(new ElementId(elementId));
+            if (element == null) throw new Exception($"找不到元素 ID: {elementId}");
+
+            using (Transaction trans = new Transaction(doc, "MCP: Unpin Element"))
+            {
+                trans.Start();
+                if (element.Pinned)
+                {
+                    element.Pinned = false;
+                    trans.Commit();
+                    return new { Success = true, ElementId = elementId, Message = "元素已解除釘選" };
+                }
+                trans.RollBack();
+                return new { Success = true, ElementId = elementId, Message = "元素原本就未釘選" };
+            }
+        }
+
+        /// <summary>
+        /// 移動元素 (XYZ 偏移) - 自動處理釘選狀態
+        /// </summary>
+        private object MoveElement(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
+            double x = parameters["x"]?.Value<double>() ?? 0;
+            double y = parameters["y"]?.Value<double>() ?? 0;
+            double z = parameters["z"]?.Value<double>() ?? 0;
+
+            Element element = doc.GetElement(new ElementId(elementId));
+            if (element == null) throw new Exception($"找不到元素 ID: {elementId}");
+
+            using (Transaction trans = new Transaction(doc, "MCP: Move Element"))
+            {
+                trans.Start();
+                
+                // 自動解除釘選
+                bool wasPinned = element.Pinned;
+                if (wasPinned) element.Pinned = false;
+
+                try
+                {
+                    ElementTransformUtils.MoveElement(doc, element.Id, new XYZ(x / 304.8, y / 304.8, z / 304.8));
+                    trans.Commit();
+                    return new { Success = true, ElementId = elementId, Message = $"元素已移動: {x}, {y}, {z} mm (解除釘選: {wasPinned})" };
+                }
+                catch (Exception ex)
+                {
+                    trans.RollBack();
+                    throw new Exception($"位移失敗: {ex.Message}");
+                }
+            }
+        }
+
+        private object BatchSaveAndClose(JToken parameters)
+        {
+            var docs = _uiApp.Application.Documents.Cast<Document>()
+                .Where(d => !string.IsNullOrEmpty(d.PathName) && !d.IsLinked)
+                .ToList();
+
+            var results = new List<object>();
+
+            foreach (var doc in docs)
+            {
+                try
+                {
+                    // 1. 儲存文件
+                    doc.Save();
+
+                    // 2. 切換文件到前景才能操作視圖
+                    try { _uiApp.OpenAndActivateDocument(doc.PathName); } catch { }
+                    
+                    UIDocument uidoc = _uiApp.ActiveUIDocument;
+                    if (uidoc != null && uidoc.Document.PathName == doc.PathName)
+                    {
+                        var uiViews = uidoc.GetOpenUIViews();
+                        
+                        // 先關閉除了 3D 以外的所有視圖
+                        foreach (var uv in uiViews)
+                        {
+                            View view = doc.GetElement(uv.ViewId) as View;
+                            if (view != null && !(view is View3D))
+                            {
+                                uv.Close();
+                            }
+                        }
+                    }
+
+                    // 3. 最後關閉文件 (包含 3D 視圖)
+                    doc.Close(false); 
+                    results.Add(new { Title = doc.Title, Success = true });
+                }
+                catch (Exception ex)
+                {
+                    results.Add(new { Title = doc.Title, Success = false, Error = ex.Message });
+                }
+            }
+
+            return new { Success = true, Details = results };
+        }
+        private object ModifyExtrusion(JObject parameters)
+        {
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
+            double? start = parameters["start"]?.Value<double>();
+            double? end = parameters["end"]?.Value<double>();
+
+            Element element = doc.GetElement(new ElementId(elementId));
+            if (element == null) throw new Exception("找不到元素");
+
+            using (Transaction trans = new Transaction(doc, "修改擠出"))
+            {
+                trans.Start();
+                
+                if (start.HasValue)
+                {
+                    Parameter pStart = element.get_Parameter(BuiltInParameter.EXTRUSION_START_PARAM);
+                    if (pStart != null) pStart.Set(start.Value / 304.8);
+                }
+                
+                if (end.HasValue)
+                {
+                    Parameter pEnd = element.get_Parameter(BuiltInParameter.EXTRUSION_END_PARAM);
+                    if (pEnd != null) pEnd.Set(end.Value / 304.8);
+                }
+
+                trans.Commit();
+                return new { Success = true, ElementId = elementId };
+            }
+        }
+
+        private object OpenDocument(JObject parameters)
+        {
+            string path = parameters["path"]?.ToString();
+            if (string.IsNullOrEmpty(path)) throw new ArgumentException("請提供檔案路徑 (path)");
+
+            ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(path);
+            OpenOptions options = new OpenOptions();
+            
+            // 此方法會在背景開啟檔案並將其切換為活躍文件
+            UIDocument newUiDoc = _uiApp.OpenAndActivateDocument(modelPath, options, false);
+            
+            return new { 
+                Success = true, 
+                Path = path,
+                Title = newUiDoc.Document.Title
+            };
+        }
+
+        private object SaveAsDocument(JObject parameters)
+        {
+            string path = parameters["path"]?.ToString();
+            if (string.IsNullOrEmpty(path)) throw new ArgumentException("請提供儲存路徑 (path)");
+
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            SaveAsOptions options = new SaveAsOptions { OverwriteExistingFile = true };
+            
+            doc.SaveAs(path, options);
+            
+            return new { Success = true, Path = path };
+        }
+
+        private object CopyDocument(JObject parameters)
+        {
+            string targetPath = parameters["path"]?.ToString();
+            if (string.IsNullOrEmpty(targetPath)) throw new ArgumentException("請提供目標路徑 (path)");
+
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            string sourcePath = doc.PathName;
+
+            if (string.IsNullOrEmpty(sourcePath))
+                throw new Exception("目前文件尚未儲存過，請先使用 save_as_document。");
+
+            // 1. 先儲存當前文件，確保磁碟上的檔案是最新的
+            doc.Save();
+
+            // 2. 確保目標資料夾存在
+            string dir = System.IO.Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                System.IO.Directory.CreateDirectory(dir);
+
+            // 3. 用檔案系統複製，不影響當前開啟的文件
+            System.IO.File.Copy(sourcePath, targetPath, true);
+
+            return new {
+                Success = true,
+                SourcePath = sourcePath,
+                TargetPath = targetPath,
+                CurrentTitle = doc.Title
+            };
+        }
+    public class CustomFailuresPreprocessor : IFailuresPreprocessor
+    {
+        public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+        {
+            IList<FailureMessageAccessor> failList = failuresAccessor.GetFailureMessages();
+            if (failList.Count == 0) return FailureProcessingResult.Continue;
+
+            foreach (FailureMessageAccessor failure in failList)
+            {
+                // 自動處理警告與錯誤，避免彈窗
+                if (failure.GetSeverity() == FailureSeverity.Warning)
+                {
+                    failuresAccessor.DeleteWarning(failure);
+                }
+                else
+                {
+                    // 對於嚴重錯誤，嘗試執行解決方案
+                    failuresAccessor.ResolveFailure(failure);
+                    return FailureProcessingResult.ProceedWithCommit;
+                }
+            }
+            return FailureProcessingResult.Continue;
+        }
     }
 }
+}
+
 
 
 

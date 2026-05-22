@@ -136,17 +136,18 @@ namespace RevitMCP.Core
         }
 
         /// <summary>
-        /// 取得元素幾何資訊（支援連結模型元素）
+        /// 取得元素幾何資訊（支援連結模型或跨文件讀取）
         /// </summary>
         public object GetElementGeometry(JObject parameters)
         {
             Document doc = _uiApp.ActiveUIDocument.Document;
             IdType elementId = parameters["elementId"]?.Value<IdType>() ?? 0;
             IdType? linkInstanceId = parameters["linkInstanceId"]?.Value<IdType>();
+            string docTitle = parameters["documentName"]?.Value<string>();
             string geometryType = parameters["geometryType"]?.Value<string>() ?? "centerline";
             bool applyTransform = parameters["applyTransform"]?.Value<bool>() ?? true;
 
-            Document targetDoc;
+            Document targetDoc = null;
             Transform linkTransform = Transform.Identity;
 
             if (linkInstanceId.HasValue && linkInstanceId.Value != 0)
@@ -164,7 +165,29 @@ namespace RevitMCP.Core
             }
             else
             {
-                targetDoc = doc;
+                // 本地或跨文件搜尋
+                if (!string.IsNullOrEmpty(docTitle))
+                {
+                    targetDoc = _uiApp.Application.Documents.Cast<Document>()
+                        .FirstOrDefault(d => d.Title.Equals(docTitle, StringComparison.OrdinalIgnoreCase) || 
+                                             d.PathName.Contains(docTitle));
+                }
+
+                if (targetDoc == null)
+                {
+                    targetDoc = doc;
+                    if (targetDoc.GetElement(new ElementId(elementId)) == null)
+                    {
+                        foreach (Document d in _uiApp.Application.Documents)
+                        {
+                            if (d.GetElement(new ElementId(elementId)) != null)
+                            {
+                                targetDoc = d;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             Element element = targetDoc.GetElement(new ElementId(elementId));
@@ -174,6 +197,7 @@ namespace RevitMCP.Core
             var result = new Dictionary<string, object>
             {
                 { "ElementId", elementId },
+                { "Document", targetDoc.Title },
                 { "Category", element.Category?.Name ?? "Unknown" },
                 { "TypeName", targetDoc.GetElement(element.GetTypeId())?.Name ?? "" }
             };

@@ -12,8 +12,10 @@ set "ROOT_DIR=%SCRIPT_DIR%.."
 set "ADDIN_SOURCE=%ROOT_DIR%\MCP\RevitMCP.addin"
 
 :: 自動偵測 DLL 路徑：優先 Release，備援 Debug
-set "DLL_SOURCE="
-if exist "%ROOT_DIR%\MCP\bin\Release\RevitMCP.dll" (
+if exist "%ROOT_DIR%\MCP\bin\Release.R24\RevitMCP.dll" (
+    set "DLL_SOURCE=%ROOT_DIR%\MCP\bin\Release.R24\RevitMCP.dll"
+    echo [資訊] 使用 Release.R24 版 DLL
+) else if exist "%ROOT_DIR%\MCP\bin\Release\RevitMCP.dll" (
     set "DLL_SOURCE=%ROOT_DIR%\MCP\bin\Release\RevitMCP.dll"
     echo [資訊] 使用 Release 版 DLL
 ) else if exist "%ROOT_DIR%\MCP\bin\Release.2024\RevitMCP.dll" (
@@ -62,9 +64,12 @@ for %%V in (%VERSIONS%) do (
         echo     [錯誤] 無法複製 RevitMCP.addin
     )
     
-    copy /Y "%DLL_SOURCE%" "!TARGET_FOLDER!\" >nul
+    set "DLL_TARGET_SUBFOLDER=!TARGET_FOLDER!\RevitMCP"
+    if not exist "!DLL_TARGET_SUBFOLDER!" mkdir "!DLL_TARGET_SUBFOLDER!"
+
+    copy /Y "%DLL_SOURCE%" "!DLL_TARGET_SUBFOLDER!\" >nul
     if !errorlevel! equ 0 (
-        echo     成功複製 RevitMCP.dll
+        echo     成功複製 RevitMCP.dll 到子資料夾
     ) else (
         echo     [錯誤] 無法複製 RevitMCP.dll
     )
