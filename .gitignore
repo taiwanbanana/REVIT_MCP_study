@@ -34,6 +34,7 @@ npm-debug.log*
 
 # Package files
 *.nupkg
+dist/
 
 # Agent/workflow files
 .agent/
