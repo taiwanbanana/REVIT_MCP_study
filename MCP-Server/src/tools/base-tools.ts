@@ -8,6 +8,39 @@ import { Tool } from "@modelcontextprotocol/sdk/types.js";
 export const baseTools: Tool[] = [
     // === 專案與元素基礎 ===
     {
+        name: "open_document",
+        description: "在背景開啟指定的 Revit 檔案並將其設為活躍文件。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                path: { type: "string", description: "Revit 檔案的絕對路徑" },
+            },
+            required: ["path"],
+        },
+    },
+    {
+        name: "save_as_document",
+        description: "將當前的活躍文件另存為新檔案（預設覆寫同名檔案）。注意：執行後畫面上的文件會切換成新檔名。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                path: { type: "string", description: "要儲存的目標路徑" },
+            },
+            required: ["path"],
+        },
+    },
+    {
+        name: "copy_document",
+        description: "將當前開啟的文件複製一份到指定路徑，但保持原檔案繼續開啟不受影響。適合用於從模板產出新檔案。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                path: { type: "string", description: "複製的目標路徑" },
+            },
+            required: ["path"],
+        },
+    },
+    {
         name: "get_project_info",
         description: "取得目前開啟的 Revit 專案基本資訊，包括專案名稱、建築物名稱、業主等。",
         inputSchema: { type: "object", properties: {} },
@@ -50,6 +83,32 @@ export const baseTools: Tool[] = [
                 value: { type: "string", description: "新的參數值" },
             },
             required: ["elementId", "parameterName", "value"],
+        },
+    },
+    {
+        name: "rename_element",
+        description: "重新命名指定元素（例如族群或類型名稱）。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                elementId: { type: "number", description: "要重新命名的元素 ID" },
+                newName: { type: "string", description: "新的名稱" },
+            },
+            required: ["elementId", "newName"],
+        },
+    },
+    {
+        name: "move_element",
+        description: "移動指定元素（XYZ 偏移量，單位公釐）。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                elementId: { type: "number", description: "元素 ID" },
+                x: { type: "number", description: "X 方向位移 (mm)", default: 0 },
+                y: { type: "number", description: "Y 方向位移 (mm)", default: 0 },
+                z: { type: "number", description: "Z 方向位移 (mm)", default: 0 },
+            },
+            required: ["elementId"],
         },
     },
     {
@@ -200,6 +259,121 @@ export const baseTools: Tool[] = [
                 maxCount: { type: "number", description: "最大回傳數量 (預設 100)", default: 100 },
             },
             required: ["category"],
+        },
+    },
+    {
+        name: "get_all_used_families_in_model",
+        description: "取得模型中所有已載入的族群名稱與 ID (不含系統族群)。",
+        inputSchema: { type: "object", properties: {} },
+    },
+    {
+        name: "get_all_used_types_of_families",
+        description: "取得指定族群清單中的所有類型 ID 與名稱。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                familyNames: { 
+                    type: "array", 
+                    items: { type: "string" }, 
+                    description: "族群名稱清單" 
+                },
+            },
+            required: ["familyNames"],
+        },
+    },
+    {
+        name: "get_open_documents",
+        description: "取得目前 Revit 中所有開啟的文件清單（包含專案與族群）。",
+        inputSchema: { type: "object", properties: {} },
+    },
+    {
+        name: "remove_cad_imports",
+        description: "移除目前文件或所有開啟文件中的 CAD 匯入底圖。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 false）" }
+            }
+        },
+    },
+    {
+        name: "batch_modify_family_parameters",
+        description: "批次修改所有開啟族群的參數值。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                parameters: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            name: { type: "string" },
+                            value: { type: "string" }
+                        },
+                        required: ["name", "value"]
+                    }
+                },
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 true）" }
+            },
+            required: ["parameters"]
+        },
+    },
+    {
+        name: "check_cad_imports",
+        description: "檢查目前或所有開啟文件中是否存在 CAD 匯入/連結，並列出其名稱。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: { type: "boolean", description: "是否檢查所有開啟的文件（預設 true）" }
+            }
+        },
+    },
+    {
+        name: "zoom_to_fit",
+        description: "將目前視圖（或所有開啟文件的視圖）縮放至全視景 (Zoom to Fit)。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 false）" }
+            }
+        },
+    },
+    {
+        name: "batch_rename_family_types",
+        description: "批次修改所有開啟族群的類型名稱。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                newName: { type: "string", description: "新的類型名稱" },
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 true）" }
+            },
+            required: ["newName"]
+        },
+    },
+    {
+        name: "batch_switch_to_3d_view",
+        description: "批次將所有開啟的文件切換至其 3D 視圖。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: {
+                    type: "boolean",
+                    description: "是否對所有開啟的文件執行（預設 true）"
+                }
+            }
+        },
+    },
+    {
+        name: "batch_save_and_close",
+        description: "批次儲存並關閉檔案。自動關閉非 3D 視圖，最後關閉檔案。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: {
+                    type: "boolean",
+                    description: "是否對所有開啟的文件執行（預設 true）"
+                }
+            }
         },
     },
 ];
