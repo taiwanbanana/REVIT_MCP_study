@@ -2,6 +2,7 @@
 #define AppVersion "1.0.0"
 #define AppPublisher "taiwanbanana"
 #define DistDir "..\dist\RevitMCP-FLOW"
+#define ServerExe "..\installer\output\RevitMCP-FLOW-server.exe"
 
 [Setup]
 AppId={{090A4C8C-61DC-426D-87DF-E4BAE0F80EC1}
@@ -32,11 +33,10 @@ Name: "claudeconfig"; Description: "Claude Desktop"; GroupDescription: "Configur
 Name: "geminiconfig"; Description: "Gemini CLI"; GroupDescription: "Configure MCP client:"; Flags: unchecked
 
 [Files]
-; MCP Server runtime
-Source: "{#DistDir}\MCP-Server\*"; DestDir: "{app}\MCP-Server"; Flags: recursesubdirs createallsubdirs
-Source: "{#DistDir}\start-mcp-server.bat"; DestDir: "{app}"
+; MCP Server — 單一 EXE，不需要 Node.js 或 node_modules
+Source: "{#ServerExe}"; DestDir: "{app}"; Flags: ignoreversion
 
-; AI config helper (runs post-install)
+; AI config helper
 Source: "configure-ai.ps1"; DestDir: "{app}"
 
 ; Revit add-ins per version
@@ -47,10 +47,6 @@ Source: "{#DistDir}\addins\2025\*"; DestDir: "{userappdata}\Autodesk\Revit\Addin
 Source: "{#DistDir}\addins\2026\*"; DestDir: "{userappdata}\Autodesk\Revit\Addins\2026"; Flags: recursesubdirs createallsubdirs; Tasks: revit2026
 
 [Run]
-; Install npm dependencies
-Filename: "cmd.exe"; Parameters: "/c npm install --omit=dev"; WorkingDir: "{app}\MCP-Server"; \
-  StatusMsg: "Installing MCP Server dependencies..."; Flags: runhidden waituntilterminated
-
 ; Configure Claude Desktop
 Filename: "powershell.exe"; \
   Parameters: "-ExecutionPolicy Bypass -File ""{app}\configure-ai.ps1"" -InstallPath ""{app}"" -Target Claude"; \
@@ -61,20 +57,9 @@ Filename: "powershell.exe"; \
   Parameters: "-ExecutionPolicy Bypass -File ""{app}\configure-ai.ps1"" -InstallPath ""{app}"" -Target Gemini"; \
   StatusMsg: "Configuring Gemini CLI..."; Flags: runhidden waituntilterminated; Tasks: geminiconfig
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}\MCP-Server\node_modules"
-
 [Code]
 function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
 begin
+  // Node.js 不再需要 — MCP Server 已打包為獨立 EXE
   Result := True;
-  if not Exec('cmd.exe', '/c node --version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-  begin
-    MsgBox('Node.js is not installed or not in PATH.' + #13#10 +
-           'Please install Node.js from https://nodejs.org before continuing.',
-           mbError, MB_OK);
-    Result := False;
-  end;
 end;

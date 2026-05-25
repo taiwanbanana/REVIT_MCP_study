@@ -6,8 +6,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$indexJs = Join-Path $InstallPath "MCP-Server\build\index.js"
-$entry = [PSCustomObject]@{ command = "node"; args = @($indexJs) }
+# MCP Server 現在是獨立 EXE，不需要 node
+$exePath = Join-Path $InstallPath "RevitMCP-FLOW-server.exe"
+$entry = [PSCustomObject]@{ command = $exePath }
 
 $configPath = switch ($Target) {
     "Claude" { Join-Path $env:APPDATA "Claude\claude_desktop_config.json" }

@@ -36,6 +36,7 @@ npm-debug.log*
 *.nupkg
 dist/
 installer/output/
+MCP-Server/bundle/
 
 # Agent/workflow files
 .agent/
