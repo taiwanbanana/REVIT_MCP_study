@@ -67,10 +67,10 @@ Type: filesandordirs; Name: "{app}\MCP-Server\node_modules"
 [Code]
 function InitializeSetup(): Boolean;
 var
-  NodeVersion: String;
+  ResultCode: Integer;
 begin
   Result := True;
-  if not Exec('cmd.exe', '/c node --version', '', SW_HIDE, ewWaitUntilTerminated, 0) then
+  if not Exec('cmd.exe', '/c node --version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
     MsgBox('Node.js is not installed or not in PATH.' + #13#10 +
            'Please install Node.js from https://nodejs.org before continuing.',

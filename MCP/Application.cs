@@ -8,6 +8,9 @@ namespace RevitMCP
 {
     public class Application : IExternalApplication
     {
+        public const string ProductName = "RevitMCP-FLOW";
+        public const string Version = "1.0.0";
+
         private static SocketService _socketService;
         private static UIApplication _uiApp;
 
@@ -24,8 +27,9 @@ namespace RevitMCP
                 // 記錄啟動
                 Logger.Info("RevitMCP Plugin 正在啟動...");
 
-                // 建立功能區面板
-                RibbonPanel panel = application.CreateRibbonPanel("MCP Tools");
+                // 建立獨立功能區 Tab
+                application.CreateRibbonTab(ProductName);
+                RibbonPanel panel = application.CreateRibbonPanel(ProductName, "MCP Tools");
                 
                 string assemblyPath = Assembly.GetExecutingAssembly().Location;
 
@@ -66,8 +70,8 @@ namespace RevitMCP
 
                 Logger.Info("RevitMCP Plugin 已成功載入");
 
-                TaskDialog.Show("RevitMCP", 
-                    "RevitMCP Plugin 已載入\n\n" +
+                TaskDialog.Show($"{ProductName} v{Version}",
+                    $"{ProductName} v{Version} 已載入\n\n" +
                     "請點擊「MCP 服務 (開/關)」按鈕來啟用 AI 控制功能");
                 
                 return Result.Succeeded;
