@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "MCP Server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["build/index.js"],
+      "cwd": "MCP-Server",
+      "port": 8964
+    },
+    {
+      "name": "MCP Server (Dev — build + run)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "MCP-Server",
+      "port": 8964
+    },
+    {
+      "name": "TypeScript Watch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "watch"],
+      "cwd": "MCP-Server"
+    }
+  ]
+}
