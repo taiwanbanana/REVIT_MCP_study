@@ -4,6 +4,12 @@ MCP/MCP/obj/
 MCP-Server/build/
 MCP-Server/node_modules/
 
+# Root-level runtime / dev artifacts
+node_modules/
+output/
+scratch/
+*.rfa
+
 # IDE and Editor files
 .vs/
 .vscode/*
@@ -40,6 +46,7 @@ MCP-Server/bundle/
 
 # Agent/workflow files
 .agent/
+.codex/
 
 # AI client 本機設定
 .claude/settings.local.json
