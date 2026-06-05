@@ -168,6 +168,18 @@ export const baseTools: Tool[] = [
         },
     },
     {
+        name: "flip_element",
+        description: "翻轉指定的 Revit 建築元素（例如門或窗）。可以選擇翻轉面向(facing)或開向(hand)。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                elementId: { type: "number", description: "要翻轉的元素 ID" },
+                flipType: { type: "string", description: "翻轉類型: 'facing'（依牆為軸翻轉，預設）或 'hand'（左右翻轉）", default: "facing" },
+            },
+            required: ["elementId"],
+        },
+    },
+    {
         name: "measure_distance",
         description: "測量兩個點之間的距離。回傳距離（公釐）。",
         inputSchema: {
