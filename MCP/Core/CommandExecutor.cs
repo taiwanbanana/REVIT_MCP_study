@@ -460,6 +460,9 @@ namespace RevitMCP.Core
                     case "move_element":
                         result = MoveElement(parameters);
                         break;
+                    case "flip_element":
+                        result = FlipElement(parameters);
+                        break;
 
                     case "batch_switch_to_3d_view":
                         result = BatchSwitchTo3DView(parameters);

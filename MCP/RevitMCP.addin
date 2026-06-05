@@ -4,7 +4,7 @@
     <Name>Revit MCP Plugin</Name>
     <Assembly>RevitMCP\RevitMCP.dll</Assembly>
     <FullClassName>RevitMCP.Application</FullClassName>
-    <AddInId>090a4c8c-61dc-426d-87df-e4bae0f80ec1</AddInId>
+    <AddInId>b4821a58-7ce9-4e74-98cb-212289cae252</AddInId>
     <VendorId>revit-mcp</VendorId>
     <VendorDescription>MCP Connection for Revit</VendorDescription>
   </AddIn>
