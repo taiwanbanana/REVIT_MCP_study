@@ -5,7 +5,7 @@
 #define ServerExe "..\installer\output\RevitMCP-FLOW-server.exe"
 
 [Setup]
-AppId={{090A4C8C-61DC-426D-87DF-E4BAE0F80EC1}
+AppId={{B4821A58-7CE9-4E74-98CB-212289CAE252}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
