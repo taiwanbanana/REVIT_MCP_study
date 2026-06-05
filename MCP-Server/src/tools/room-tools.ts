@@ -38,18 +38,4 @@ export const roomTools: Tool[] = [
             },
         },
     },
-    {
-        name: "check_exterior_wall_openings",
-        description: "依據台灣建築技術規則第45條及第110條檢討外牆開口。自動讀取地界線計算距離，以顏色標示違規。",
-        inputSchema: {
-            type: "object",
-            properties: {
-                checkArticle45: { type: "boolean", description: "檢查第45條", default: true },
-                checkArticle110: { type: "boolean", description: "檢查第110條", default: true },
-                colorizeViolations: { type: "boolean", description: "以顏色標示", default: true },
-                exportReport: { type: "boolean", description: "匯出 JSON 報表", default: false },
-                reportPath: { type: "string", description: "報表輸出路徑" },
-            },
-        },
-    },
 ];

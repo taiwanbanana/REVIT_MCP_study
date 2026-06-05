@@ -61,6 +61,26 @@ export const familyTools: Tool[] = [
         },
     },
     {
+        name: "batch_switch_to_3d_view",
+        description: "批次將所有開啟的文件切換至其 3D 視圖。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 true）" },
+            },
+        },
+    },
+    {
+        name: "batch_save_and_close",
+        description: "批次儲存並關閉檔案。自動關閉非 3D 視圖，最後關閉檔案。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                allDocuments: { type: "boolean", description: "是否對所有開啟的文件執行（預設 true）" },
+            },
+        },
+    },
+    {
         name: "rfa_create_extrusion",
         description: "在族群編輯器 (.rfa) 中建立擠出實體 (Extrusion)。需要提供閉合點位座標。",
         inputSchema: {

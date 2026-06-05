@@ -72,34 +72,6 @@ export const wallTools: Tool[] = [
         },
     },
     {
-        name: "create_dimension",
-        description: "在指定視圖中建立尺寸標註。",
-        inputSchema: {
-            type: "object",
-            properties: {
-                viewId: { type: "number", description: "要建立標註的視圖 ID" },
-                startX: { type: "number", description: "起點 X 座標（公釐）" },
-                startY: { type: "number", description: "起點 Y 座標（公釐）" },
-                endX: { type: "number", description: "終點 X 座標（公釐）" },
-                endY: { type: "number", description: "終點 Y 座標（公釐）" },
-                offset: { type: "number", description: "標註線偏移距離（公釐）", default: 500 },
-            },
-            required: ["viewId", "startX", "startY", "endX", "endY"],
-        },
-    },
-    {
-        name: "create_corridor_dimension",
-        description: "走廊寬度標註 — 自動偵測房間邊界的平行牆對，建立精確的牆到牆尺寸標註。回傳每個區段的實測寬度與合規判定。",
-        inputSchema: {
-            type: "object",
-            properties: {
-                roomId: { type: "number", description: "走廊房間的 Element ID" },
-                viewId: { type: "number", description: "要建立標註的平面視圖 ID" },
-            },
-            required: ["roomId", "viewId"],
-        },
-    },
-    {
         name: "query_walls_by_location",
         description: "查詢指定座標附近的牆體，回傳牆厚度、位置線與牆面座標。",
         inputSchema: {
@@ -202,10 +174,5 @@ export const wallTools: Tool[] = [
             },
             required: ["typeId"],
         },
-    },
-    {
-        name: "get_line_styles",
-        description: "取得目前專案中可用的線型 (GraphicsStyles)，例如：虛線、細線等。",
-        inputSchema: { type: "object", properties: {} },
     },
 ];

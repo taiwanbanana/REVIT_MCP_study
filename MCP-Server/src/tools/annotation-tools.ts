@@ -68,6 +68,11 @@ export const annotationTools: Tool[] = [
         },
     },
     {
+        name: "get_line_styles",
+        description: "取得目前專案中可用的線型 (GraphicsStyles)，例如：虛線、細線等。",
+        inputSchema: { type: "object", properties: {} },
+    },
+    {
         name: "create_text_note",
         description: "在視圖上建立文字標註。",
         inputSchema: {
