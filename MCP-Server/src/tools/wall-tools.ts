@@ -208,9 +208,4 @@ export const wallTools: Tool[] = [
         description: "取得目前專案中可用的線型 (GraphicsStyles)，例如：虛線、細線等。",
         inputSchema: { type: "object", properties: {} },
     },
-    {
-        name: "trace_stair_geometry",
-        description: "自動分析視圖中的樓梯幾何，偵測被牆、版等物件遮擋的邊緣線段，回傳座標以供後續繪製虛線。",
-        inputSchema: { type: "object", properties: {} },
-    },
 ];

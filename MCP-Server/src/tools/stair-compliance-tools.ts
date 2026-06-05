@@ -54,5 +54,10 @@ export const STAIR_COMPLIANCE_TOOLS: Tool[] = [
       },
       required: ['viewId', 'x', 'y', 'leaderX', 'leaderY', 'text']
     }
+  },
+  {
+    name: 'trace_stair_geometry',
+    description: '自動分析視圖中的樓梯幾何，偵測被牆、版等物件遮擋的邊緣線段，回傳座標以供後續繪製虛線。',
+    inputSchema: { type: 'object', properties: {} }
   }
 ];
