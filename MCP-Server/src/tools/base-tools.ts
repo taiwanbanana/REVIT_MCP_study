@@ -308,4 +308,28 @@ export const baseTools: Tool[] = [
             }
         },
     },
+    {
+        name: "send_code_to_revit",
+        description: "動態發送 C# 程式碼片段到 Revit 即時編譯並執行（Roslyn）。代碼會被嵌入 Execute(Document document, object[] parameters) 方法中，可直接使用 document 變數操作 Revit API。必須以 return 陳述式結尾。transactionMode='auto'（預設）自動包 Transaction；'none' 用於匯出 DXF、純讀取等不需 Transaction 的操作。",
+        inputSchema: {
+            type: "object",
+            properties: {
+                code: {
+                    type: "string",
+                    description: "C# 程式碼片段。可直接使用 document（Document）與 parameters（object[]）變數。必須以 return 結尾，例如 return Result.Succeeded; 或 return new { Count = 5 };",
+                },
+                parameters: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "可選的執行參數，對應代碼中的 parameters[0]、parameters[1] 等",
+                },
+                transactionMode: {
+                    type: "string",
+                    enum: ["auto", "none"],
+                    description: "'auto'（預設）：自動包 Transaction，適合建立/修改元素；'none'：不包 Transaction，適合匯出 DXF、純讀取操作",
+                },
+            },
+            required: ["code"],
+        },
+    },
 ];

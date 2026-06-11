@@ -28,6 +28,7 @@ import { dependentViewTools } from "./dependent-view-tools.js";
 import { clashTools } from "./clash-tools.js";
 import { familyTools } from "./family-tools.js";
 import { annotationTools } from "./annotation-tools.js";
+import { nonicaGapTools } from "./nonicapro-gap-tools.js";
 
 /**
  * Profile 對照表
@@ -42,13 +43,13 @@ const PROFILE_MODULES: Record<string, Tool[][]> = {
         scheduleTools, mepTools, curtainWallTools, smokeExhaustTools,
         STAIR_COMPLIANCE_TOOLS, sheetTools, detailComponentTools,
         dimensionTools, dependentViewTools, clashTools,
-        familyTools, annotationTools,
+        familyTools, annotationTools, nonicaGapTools,
     ],
 
     // ── architect：建築設計 + 結構碰撞 ──────────────────────────────
     // 涵蓋：牆/門/窗/柱/地板、房間、視覺化、明細表、帷幕牆、
     //        樓梯法規、圖紙、詳圖、尺寸標註、從屬視圖、碰撞偵測、
-    //        族群管理、通用標註
+    //        族群管理、通用標註、NONICAPRO 差距補充（視圖/操作/查詢）
     architect: [
         baseTools,
         wallTools,
@@ -64,6 +65,7 @@ const PROFILE_MODULES: Record<string, Tool[][]> = {
         clashTools,
         familyTools,
         annotationTools,
+        nonicaGapTools,
     ],
 
     // ── mep：機電配管 + 排煙法規 ────────────────────────────────────

@@ -472,6 +472,72 @@ namespace RevitMCP.Core
                         result = BatchSaveAndClose(parameters);
                         break;
 
+                    case "send_code_to_revit":
+                        result = SendCodeToRevit(parameters);
+                        break;
+
+                    // ── NONICAPRO 差距補充模組（18 個工具） ──────────────────
+
+                    // 操作類
+                    case "copy_elements":
+                        result = CopyElements(parameters);
+                        break;
+                    case "rotate_elements":
+                        result = RotateElements(parameters);
+                        break;
+                    case "isolate_elements_in_view":
+                        result = IsolateElementsInView(parameters);
+                        break;
+                    case "set_sheet_revisions":
+                        result = SetSheetRevisions(parameters);
+                        break;
+                    case "copy_view_filters":
+                        result = CopyViewFilters(parameters);
+                        break;
+
+                    // 視圖建立類
+                    case "create_floor_plan_view":
+                        result = CreateFloorPlanView(parameters);
+                        break;
+                    case "create_3d_view":
+                        result = Create3DView(parameters);
+                        break;
+                    case "create_legend_view":
+                        result = CreateLegendView(parameters);
+                        break;
+                    case "create_room_elevation_views":
+                        result = CreateRoomElevationViews(parameters);
+                        break;
+                    case "create_tags_on_view":
+                        result = CreateTagsOnView(parameters);
+                        break;
+                    case "place_view_on_sheet":
+                        result = PlaceViewOnSheet(parameters);
+                        break;
+                    case "create_grids":
+                        result = CreateGrids(parameters);
+                        break;
+                    case "create_levels":
+                        result = CreateLevels(parameters);
+                        break;
+
+                    // 查詢補強類
+                    case "get_element_parameters_bulk":
+                        result = GetElementParametersBulk(parameters);
+                        break;
+                    case "get_model_warnings":
+                        result = GetModelWarnings(parameters);
+                        break;
+                    case "get_workset_info":
+                        result = GetWorksetInfo(parameters);
+                        break;
+                    case "get_element_graphic_overrides":
+                        result = GetElementGraphicOverrides(parameters);
+                        break;
+                    case "get_type_material_layers":
+                        result = GetTypeMaterialLayers(parameters);
+                        break;
+
                     default:
                         throw new NotImplementedException($"未實作的命令: {request.CommandName}");
                 }
