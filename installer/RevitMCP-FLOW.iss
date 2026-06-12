@@ -1,15 +1,15 @@
 #define AppName "RevitMCP-FLOW"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #define AppPublisher "taiwanbanana"
 #define DistDir "..\dist\RevitMCP-FLOW"
 #define ServerExe "..\installer\output\RevitMCP-FLOW-server.exe"
 
 [Setup]
-AppId={{B4821A58-7CE9-4E74-98CB-212289CAE252}
+AppId={{2CEEC6AB-6BFF-471E-8A24-73FE7151F1BB}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-AppSupportURL=https://github.com/taiwanbanana/REVIT_MCP_study_private
+AppSupportURL=https://github.com/taiwanbanana/REVIT_MCP_study
 DefaultDirName={localappdata}\{#AppName}
 DefaultGroupName={#AppName}
 OutputDir=output

@@ -1,6 +1,6 @@
 {
   "name": "revit-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP Server for Revit integration - AI-Powered Revit Control",
   "main": "build/index.js",
   "type": "module",
